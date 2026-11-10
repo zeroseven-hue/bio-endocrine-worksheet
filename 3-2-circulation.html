@@ -283,6 +283,51 @@
       color: #ffffff !important;
     }
 
+  
+    /* 即時批改反饋與解析盒子 */
+    .explain-box {
+      margin-top: 0.75rem;
+      padding: 0.85rem 1.1rem;
+      border-radius: 10px;
+      font-size: 0.92rem;
+      line-height: 1.6;
+      animation: fadeIn 0.3s ease;
+    }
+    .explain-box.correct {
+      background: #f0fdf4;
+      border: 1.5px solid #86efac;
+      color: #166534;
+    }
+    .explain-box.wrong {
+      background: #fef2f2;
+      border: 1.5px solid #fca5a5;
+      color: #991b1b;
+    }
+    .explain-box .badge-res {
+      display: inline-block;
+      font-weight: 800;
+      padding: 2px 8px;
+      border-radius: 6px;
+      margin-right: 6px;
+      font-size: 0.85rem;
+    }
+    .explain-box.correct .badge-res {
+      background: #16a34a;
+      color: #fff;
+    }
+    .explain-box.wrong .badge-res {
+      background: #dc2626;
+      color: #fff;
+    }
+    .choice-opt-label.is-correct-target {
+      border-color: #22c55e !important;
+      background: #f0fdf4 !important;
+    }
+    .choice-opt-label.is-wrong-target {
+      border-color: #ef4444 !important;
+      background: #fef2f2 !important;
+    }
+
   </style>
 </head>
 <body>

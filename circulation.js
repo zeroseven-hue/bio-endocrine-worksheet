@@ -445,6 +445,9 @@ function handleSubmit() {
     }
   }
 
+  // 渲染第 7 關素養選擇題之答案與解析
+  renderMCQExplanations(data);
+
   // 成果卡顯示
   document.getElementById("resStudentInfo").textContent = `${data.sClass} 班 ${data.sSeat} 號 ${data.sName} 同學`;
   document.getElementById("resScore").textContent = score;
@@ -495,4 +498,55 @@ function submitToGasBackend(data, score) {
     clearTimeout(timeoutId);
     console.warn("因校園 Wi-Fi 斷網或後端尚未部署，已安全留存於本機暫存中（不卡死交卷）", err);
   });
+}
+
+
+// 渲染選擇題即時解答與詳細解析
+function renderMCQExplanations(data) {
+  for (let i = 1; i <= 10; i++) {
+    const qKey = `mcq_${i}`;
+    const userAns = data.mcq[qKey] || "";
+    const targetInfo = MCQ_ANSWERS[qKey];
+    const isCorrect = userAns === targetInfo.ans;
+
+    // 清除舊解析
+    const oldBox = document.getElementById(`explain_box_${i}`);
+    if (oldBox) oldBox.remove();
+
+    // 尋找題目外層容器
+    const radioInputs = document.querySelectorAll(`input[name="${qKey}"]`);
+    if (radioInputs.length > 0) {
+      const qBlock = radioInputs[0].closest(".q-block");
+      if (qBlock) {
+        // 標記選項顏色
+        radioInputs.forEach(input => {
+          const parentLabel = input.closest(".choice-opt-label");
+          if (parentLabel) {
+            parentLabel.classList.remove("is-correct-target", "is-wrong-target");
+            if (input.value === targetInfo.ans) {
+              parentLabel.classList.add("is-correct-target");
+            } else if (input.checked && !isCorrect) {
+              parentLabel.classList.add("is-wrong-target");
+            }
+          }
+        });
+
+        // 插入解析區塊
+        const explainDiv = document.createElement("div");
+        explainDiv.id = `explain_box_${i}`;
+        explainDiv.className = `explain-box ${isCorrect ? "correct" : "wrong"}`;
+        explainDiv.innerHTML = `
+          <div>
+            <span class="badge-res">${isCorrect ? "✔ 答對 (+10分)" : "✖ 答錯"}</span>
+            <strong>正確答案：(${targetInfo.ans})</strong>
+            ${!isCorrect ? `（您的作答：${userAns ? '(' + userAns + ')' : '未作答'}）` : ''}
+          </div>
+          <div style="margin-top:4px;">
+            💡 <strong>課堂解析：</strong>${targetInfo.explain}
+          </div>
+        `;
+        qBlock.appendChild(explainDiv);
+      }
+    }
+  }
 }
