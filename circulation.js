@@ -616,7 +616,7 @@ function renderMCQExplanations(data) {
         explainDiv.className = `explain-box ${isCorrect ? "correct" : "wrong"}`;
         explainDiv.innerHTML = `
           <div>
-            <span class="badge-res">${isCorrect ? "✔ 答對 (+10分)" : "✖ 答錯"}</span>
+            <span class="badge-res">${isCorrect ? "✔ 答對 (+5分)" : "✖ 答錯"}</span>
             <strong>正確答案：(${targetInfo.ans})</strong>
             ${!isCorrect ? `（您的作答：${userAns ? '(' + userAns + ')' : '未作答'}）` : ''}
           </div>
