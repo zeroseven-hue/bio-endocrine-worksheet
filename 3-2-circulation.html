@@ -1,0 +1,1024 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>國中生物 3-2 人體的循環 數位互動學習單</title>
+  <link rel="stylesheet" href="style.css?v=3.2">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&family=Orbitron:wght@600;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+  <style>
+    /* 3-2 專屬高對比與視覺輔助樣式 */
+    :root {
+      --circ-red: #ef4444;
+      --circ-blue: #3b82f6;
+      --circ-gold: #f59e0b;
+      --circ-teal: #10b981;
+      --circ-dark: #0f172a;
+    }
+    .video-hero-card {
+      background: linear-gradient(135deg, rgba(15, 23, 42, 0.95), rgba(30, 41, 59, 0.95));
+      border: 1px solid rgba(59, 130, 246, 0.3);
+      border-radius: 16px;
+      padding: 1.25rem;
+      margin-bottom: 1.5rem;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+    }
+    .video-frame-wrap {
+      position: relative;
+      padding-bottom: 56.25%; /* 16:9 ratio */
+      height: 0;
+      overflow: hidden;
+      border-radius: 12px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      background: #000;
+      margin-top: 0.75rem;
+    }
+    .video-frame-wrap iframe {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      border: none;
+    }
+    .timecode-bar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      margin-top: 0.85rem;
+      padding: 0.75rem;
+      background: rgba(0, 0, 0, 0.35);
+      border-radius: 10px;
+      align-items: center;
+    }
+    .timecode-label {
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: #93c5fd;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .tc-btn {
+      background: rgba(59, 130, 246, 0.15);
+      border: 1px solid rgba(59, 130, 246, 0.4);
+      color: #e2e8f0;
+      padding: 0.3rem 0.65rem;
+      border-radius: 6px;
+      font-size: 0.8rem;
+      font-family: 'JetBrains Mono', monospace;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    .tc-btn:hover {
+      background: rgba(59, 130, 246, 0.4);
+      border-color: #60a5fa;
+      color: #fff;
+      transform: translateY(-1px);
+    }
+    .mnemonic-box {
+      background: linear-gradient(135deg, rgba(239, 68, 68, 0.15), rgba(59, 130, 246, 0.15));
+      border: 2px dashed #f59e0b;
+      border-radius: 12px;
+      padding: 0.85rem 1.25rem;
+      margin-bottom: 1.25rem;
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+    .mnemonic-icon {
+      font-size: 2rem;
+    }
+    .mnemonic-text h4 {
+      margin: 0;
+      color: #fbbf24;
+      font-size: 1.05rem;
+      letter-spacing: 0.5px;
+    }
+    .mnemonic-text p {
+      margin: 0.2rem 0 0 0;
+      font-size: 0.88rem;
+      color: #e2e8f0;
+    }
+    .pure-select-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 0.75rem;
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    .pure-select-table th, .pure-select-table td {
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      padding: 0.65rem 0.5rem;
+      text-align: center;
+      font-size: 0.9rem;
+    }
+    .pure-select-table th {
+      background: rgba(30, 41, 59, 0.9);
+      color: #93c5fd;
+      font-weight: 700;
+    }
+    .pure-select-table td {
+      background: rgba(15, 23, 42, 0.6);
+    }
+    .pure-select-table tr:hover td {
+      background: rgba(30, 41, 59, 0.8);
+    }
+    .flow-badge-step {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0.25rem 0.6rem;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      font-weight: 700;
+      margin: 0.2rem;
+    }
+    .flow-red { background: rgba(239, 68, 68, 0.25); border: 1px solid #ef4444; color: #fca5a5; }
+    .flow-blue { background: rgba(59, 130, 246, 0.25); border: 1px solid #3b82f6; color: #93c5fd; }
+    .flow-arrow { color: #f59e0b; font-weight: 900; margin: 0 0.25rem; }
+    .choice-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      margin-top: 0.5rem;
+    }
+    .choice-opt-label {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      background: rgba(30, 41, 59, 0.6);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 8px;
+      padding: 0.65rem 0.85rem;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      font-size: 0.92rem;
+    }
+    .choice-opt-label:hover {
+      background: rgba(59, 130, 246, 0.2);
+      border-color: #60a5fa;
+    }
+    .choice-opt-label input[type="radio"] {
+      appearance: none;
+      width: 18px;
+      height: 18px;
+      border: 2px solid #64748b;
+      border-radius: 50%;
+      outline: none;
+      cursor: pointer;
+      position: relative;
+      flex-shrink: 0;
+    }
+    .choice-opt-label input[type="radio"]:checked {
+      border-color: #3b82f6;
+      background-color: #3b82f6;
+      box-shadow: 0 0 8px rgba(59, 130, 246, 0.8);
+    }
+    .choice-opt-label input[type="radio"]:checked + span {
+      color: #93c5fd;
+      font-weight: 700;
+    }
+    @media (max-width: 768px) {
+      .pure-select-table {
+        display: block;
+        overflow-x: auto;
+      }
+      .mnemonic-box {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- 背景科技光網 -->
+  <div class="tech-bg-grid"></div>
+
+  <!-- 頂部導航列 -->
+  <header class="cyber-header">
+    <div class="header-container">
+      <div class="brand-zone">
+        <a href="index.html" class="brand-badge" style="text-decoration:none;" title="點擊返回派卷大廳">BIO-3-2</a>
+        <div class="brand-title-wrap">
+          <h1 class="brand-title">3-2 人體的循環 數位互動學習單</h1>
+          <p class="brand-sub">7年級自然 ｜《工作細胞》第08話【血液循環】課堂素養整合</p>
+        </div>
+      </div>
+      <div class="mode-switcher-wrap">
+        <div class="mode-tab active" style="cursor:default;">
+          <span class="mode-icon">🩸</span>
+          <span class="mode-text">個人學習單</span>
+          <span class="status-indicator"></span>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- 主容器 -->
+  <main class="app-main">
+    <!-- 頂部身分登錄卡片 (跑班防呆) -->
+    <section class="identity-card glass-panel" id="identityCard">
+      <div class="panel-header">
+        <div class="panel-title">
+          <span class="glow-dot"></span>
+          <span>學生基本資料登錄（前導零嚴格鎖定）</span>
+        </div>
+        <div class="auto-save-pill" id="autoSaveBadge">
+          <span class="save-icon">💾</span> 本地已自動暫存
+        </div>
+      </div>
+
+      <div class="id-row">
+        <div class="form-group flex-1">
+          <label for="studentClass"><span class="req">*</span> 班級</label>
+          <div class="select-wrapper">
+            <select id="studentClass" class="cyber-select">
+              <option value="" disabled selected>請選擇班級</option>
+              <!-- 701 - 710 由 JS 自動生成 -->
+            </select>
+          </div>
+        </div>
+
+        <div class="form-group flex-1">
+          <label for="studentSeat"><span class="req">*</span> 座號</label>
+          <div class="select-wrapper">
+            <select id="studentSeat" class="cyber-select">
+              <option value="" disabled selected>請選擇座號</option>
+              <!-- 01 - 35 由 JS 自動生成 -->
+            </select>
+          </div>
+        </div>
+
+        <div class="form-group flex-2">
+          <label for="studentName"><span class="req">*</span> 學生真實姓名 <span style="color: #ef4444; font-size: 0.82rem; font-weight: 700;">（⚠️ 嚴禁暱稱！非真實姓名直接退卷）</span></label>
+          <div class="input-wrapper">
+            <input type="text" id="studentName" class="cyber-input" placeholder="請輸入 2~5 字中文姓名（如：陳小美）" maxlength="5" autocomplete="off">
+            <span class="valid-feedback" id="nameFeedback"></span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 老師專屬口訣幫手提示卡 -->
+    <div class="mnemonic-box">
+      <div class="mnemonic-icon">💡</div>
+      <div class="mnemonic-text">
+        <h4>老師傳授「循環系統通關黃金口訣」</h4>
+        <p><strong>「靜房，心動出室」</strong>：靜脈流回<strong>心房</strong>（進心），血液由<strong>心室</strong>推入動脈（出心）！記住左室出大動、右室出肺動！</p>
+      </div>
+    </div>
+
+    <!-- YouTube 影片教學連動區 -->
+    <section class="video-hero-card">
+      <div class="panel-header">
+        <div class="panel-title">
+          <span class="glow-dot" style="background:#ef4444;"></span>
+          <span style="color:#f87171;">《工作細胞》第08話【血液循環】課堂情境影片</span>
+        </div>
+        <span style="font-size:0.82rem; color:#94a3b8;">可邊看邊答，點擊時間點秒速跳播</span>
+      </div>
+      <div class="video-frame-wrap">
+        <iframe id="ytPlayer" src="https://www.youtube.com/embed/uB3zusF-tKc?enablejsapi=1&rel=0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+      </div>
+      <div class="timecode-bar">
+        <span class="timecode-label">⏱️ 任務跳轉：</span>
+        <button type="button" class="tc-btn" onclick="seekVideoTo(80)">01:20 血球隊登場</button>
+        <button type="button" class="tc-btn" onclick="seekVideoTo(340)">05:40 血管公路網</button>
+        <button type="button" class="tc-btn" onclick="seekVideoTo(510)">08:30 誤闖淋巴管</button>
+        <button type="button" class="tc-btn" onclick="seekVideoTo(615)">10:15 心臟中央車站</button>
+        <button type="button" class="tc-btn" onclick="seekVideoTo(810)">13:30 肺部換氣</button>
+        <button type="button" class="tc-btn" onclick="seekVideoTo(990)">16:30 左心室大爆發</button>
+      </div>
+    </section>
+
+    <!-- 關卡分頁導覽按鈕 -->
+    <nav class="step-nav glass-panel" aria-label="學習單任務選單">
+      <div class="step-nav-scroll">
+        <button type="button" class="step-btn active" data-step="1">
+          <span class="step-num">01</span>
+          <span class="step-label">血液物流隊</span>
+          <span class="check-mark">✓</span>
+        </button>
+        <button type="button" class="step-btn" data-step="2">
+          <span class="step-num">02</span>
+          <span class="step-label">微觀生理適應</span>
+          <span class="check-mark">✓</span>
+        </button>
+        <button type="button" class="step-btn" data-step="3">
+          <span class="step-num">03</span>
+          <span class="step-label">血管特性矩陣</span>
+          <span class="check-mark">✓</span>
+        </button>
+        <button type="button" class="step-btn" data-step="4">
+          <span class="step-num">04</span>
+          <span class="step-label">名場景解密</span>
+          <span class="check-mark">✓</span>
+        </button>
+        <button type="button" class="step-btn" data-step="5">
+          <span class="step-num">05</span>
+          <span class="step-label">雙循環之旅</span>
+          <span class="check-mark">✓</span>
+        </button>
+        <button type="button" class="step-btn" data-step="6">
+          <span class="step-num">06</span>
+          <span class="step-label">淋巴密道</span>
+          <span class="check-mark">✓</span>
+        </button>
+        <button type="button" class="step-btn" data-step="7">
+          <span class="step-num">07</span>
+          <span class="step-label">素養檢核測驗</span>
+          <span class="check-mark">✓</span>
+        </button>
+      </div>
+    </nav>
+
+    <!-- 題目內容卡片區 -->
+    <div class="step-card-slider">
+
+      <!-- 關卡 1：任務一 血液物流隊 -->
+      <article class="question-card glass-panel" id="stepCard1">
+        <div class="card-title-bar">
+          <span class="card-badge">任務一</span>
+          <h2>血液物流隊 ｜ 血球身分與特徵對照（全下拉點選）</h2>
+        </div>
+        <div class="card-prompt">
+          <p class="intro-desc">請回憶影片中快遞員 AE3803、白血球 1146 與血小板隊長的外觀職責，並搭配 7 年級生物課本完成下列對照：</p>
+        </div>
+
+        <div style="overflow-x:auto;">
+          <table class="pure-select-table">
+            <thead>
+              <tr>
+                <th style="width:20%;">比較項目</th>
+                <th style="width:26%;">紅血球（快遞員 AE3803）</th>
+                <th style="width:27%;">白血球（嗜中性球 1146）</th>
+                <th style="width:27%;">血小板（工程維修隊）</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>細胞形狀</strong></td>
+                <td>雙凹圓盤狀</td>
+                <td>圓球形（可變形）</td>
+                <td>不規則碎片狀</td>
+              </tr>
+              <tr>
+                <td><strong>細胞核（有／無）</strong></td>
+                <td>
+                  <select id="t1_rbc_nucleus" class="cyber-select">
+                    <option value="" disabled selected>請選擇</option>
+                    <option value="無">無（成熟後不具細胞核）</option>
+                    <option value="有">有（具完整細胞核）</option>
+                  </select>
+                </td>
+                <td>
+                  <select id="t1_wbc_nucleus" class="cyber-select">
+                    <option value="" disabled selected>請選擇</option>
+                    <option value="無">無（成熟後不具細胞核）</option>
+                    <option value="有">有（具完整細胞核）</option>
+                  </select>
+                </td>
+                <td>
+                  <select id="t1_plt_nucleus" class="cyber-select">
+                    <option value="" disabled selected>請選擇</option>
+                    <option value="無">無（成熟後不具細胞核）</option>
+                    <option value="有">有（具完整細胞核）</option>
+                  </select>
+                </td>
+              </tr>
+              <tr>
+                <td><strong>體積大小比較</strong></td>
+                <td>中等</td>
+                <td>
+                  <select id="t1_wbc_size" class="cyber-select">
+                    <option value="" disabled selected>請選擇</option>
+                    <option value="最大">最大</option>
+                    <option value="中等">中等</option>
+                    <option value="最小">最小</option>
+                  </select>
+                </td>
+                <td>
+                  <select id="t1_plt_size" class="cyber-select">
+                    <option value="" disabled selected>請選擇</option>
+                    <option value="最大">最大</option>
+                    <option value="中等">中等</option>
+                    <option value="最小">最小</option>
+                  </select>
+                </td>
+              </tr>
+              <tr>
+                <td><strong>數量多寡比較</strong></td>
+                <td>
+                  <select id="t1_rbc_num" class="cyber-select">
+                    <option value="" disabled selected>請選擇</option>
+                    <option value="最多">最多（數百萬個/mm³）</option>
+                    <option value="居中">居中</option>
+                    <option value="最少">最少（數千個/mm³）</option>
+                  </select>
+                </td>
+                <td>
+                  <select id="t1_wbc_num" class="cyber-select">
+                    <option value="" disabled selected>請選擇</option>
+                    <option value="最多">最多</option>
+                    <option value="居中">居中</option>
+                    <option value="最少">最少</option>
+                  </select>
+                </td>
+                <td>居中</td>
+              </tr>
+              <tr>
+                <td><strong>主要生理功能</strong></td>
+                <td>
+                  <select id="t1_rbc_func" class="cyber-select">
+                    <option value="" disabled selected>請選擇</option>
+                    <option value="攜帶氧氣">攜帶氧氣供應全身</option>
+                    <option value="吞噬病原體">吞噬病原體、防禦疾病</option>
+                    <option value="促進血液凝固">促進血液凝固、止血</option>
+                  </select>
+                </td>
+                <td>
+                  <select id="t1_wbc_func" class="cyber-select">
+                    <option value="" disabled selected>請選擇</option>
+                    <option value="攜帶氧氣">攜帶氧氣供應全身</option>
+                    <option value="吞噬病原體">吞噬病原體、防禦疾病</option>
+                    <option value="促進血液凝固">促進血液凝固、止血</option>
+                  </select>
+                </td>
+                <td>
+                  <select id="t1_plt_func" class="cyber-select">
+                    <option value="" disabled selected>請選擇</option>
+                    <option value="攜帶氧氣">攜帶氧氣供應全身</option>
+                    <option value="吞噬病原體">吞噬病原體、防禦疾病</option>
+                    <option value="促進血液凝固">促進血液凝固、止血</option>
+                  </select>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="card-footer-nav" style="margin-top:1.5rem;">
+          <button type="button" class="cyber-btn secondary-btn" disabled>⏮ 首關</button>
+          <button type="button" class="cyber-btn primary-btn next-step-btn" data-next="2">下一關：微觀生理適應 ⏭</button>
+        </div>
+      </article>
+
+      <!-- 關卡 2：任務二 微觀結構與生理適應 -->
+      <article class="question-card glass-panel hidden" id="stepCard2">
+        <div class="card-title-bar">
+          <span class="card-badge">任務二</span>
+          <h2>微觀生理適應 ｜ 角色專長解剖學（下拉點選）</h2>
+        </div>
+        <div class="card-prompt">
+          <p class="intro-desc">不用長篇大論打字！請依據 7 年級生物所學，選出最貼近課本的核心觀念：</p>
+        </div>
+
+        <div class="q-block">
+          <label class="q-label"><span class="q-seq">Q1.</span> 紅血球的構造適應：人類成熟紅血球「沒有細胞核」且呈「雙凹圓盤狀」，在氣體運輸上的優勢是什麼？</label>
+          <div class="select-wrapper">
+            <select id="t2_rbc_advantage" class="cyber-select">
+              <option value="" disabled selected>請選擇最佳解釋</option>
+              <option value="A">體積適中容易通過窄血管，且有利於快速結合與釋放氧氣</option>
+              <option value="B">為了能長出鞭毛快速游泳推進</option>
+              <option value="C">為了能分裂產生更多紅血球寶寶</option>
+              <option value="D">為了能黏在血管壁上阻擋血液流動</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="q-block" style="margin-top:1.25rem;">
+          <label class="q-label"><span class="q-seq">Q2.</span> 白血球的「穿牆術」：白血球感應到病原體信號時，能由微血管管壁的細胞間隙擠出去前往組織作戰，這個動作稱為？</label>
+          <div class="select-wrapper">
+            <select id="t2_wbc_motion" class="cyber-select">
+              <option value="" disabled selected>請選擇專有名詞</option>
+              <option value="變形運動">變形運動（可伸出偽足改變形狀擠出血管）</option>
+              <option value="擴散作用">擴散作用</option>
+              <option value="向性反應">向性反應</option>
+              <option value="蒸散作用">蒸散作用</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="card-footer-nav" style="margin-top:1.5rem;">
+          <button type="button" class="cyber-btn secondary-btn prev-step-btn" data-prev="1">⏮ 上一關</button>
+          <button type="button" class="cyber-btn primary-btn next-step-btn" data-next="3">下一關：血管特性矩陣 ⏭</button>
+        </div>
+      </article>
+
+      <!-- 關卡 3：任務三 血管公路網特性比較矩陣 -->
+      <article class="question-card glass-panel hidden" id="stepCard3">
+        <div class="card-title-bar">
+          <span class="card-badge">任務三</span>
+          <h2>血管公路網 ｜ 動脈、微血管、靜脈特性矩陣（全下拉點選）</h2>
+        </div>
+        <div class="card-prompt">
+          <p class="intro-desc">血液在封閉管道中流動，三種血管各有特色。請完成各項物理特性下拉選單：</p>
+        </div>
+
+        <div style="overflow-x:auto;">
+          <table class="pure-select-table">
+            <thead>
+              <tr>
+                <th style="width:22%;">比較項目</th>
+                <th style="width:26%;">動脈（Artery）</th>
+                <th style="width:26%;">微血管（Capillary）</th>
+                <th style="width:26%;">靜脈（Vein）</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>血流方向</strong></td>
+                <td>
+                  <select id="t3_art_dir" class="cyber-select">
+                    <option value="" disabled selected>請選擇</option>
+                    <option value="離心">流離心臟（離心）</option>
+                    <option value="回心">流回心臟（回心）</option>
+                  </select>
+                </td>
+                <td>連接小動脈與小靜脈</td>
+                <td>
+                  <select id="t3_vein_dir" class="cyber-select">
+                    <option value="" disabled selected>請選擇</option>
+                    <option value="離心">流離心臟（離心）</option>
+                    <option value="回心">流回心臟（回心）</option>
+                  </select>
+                </td>
+              </tr>
+              <tr>
+                <td><strong>管壁厚度</strong></td>
+                <td>最厚</td>
+                <td>
+                  <select id="t3_cap_wall" class="cyber-select">
+                    <option value="" disabled selected>請選擇</option>
+                    <option value="最薄">最薄（僅一層內皮細胞）</option>
+                    <option value="較薄">較薄</option>
+                    <option value="最厚">最厚</option>
+                  </select>
+                </td>
+                <td>較薄</td>
+              </tr>
+              <tr>
+                <td><strong>管壁彈性</strong></td>
+                <td>最佳（富有彈性纖維）</td>
+                <td>最差（缺乏彈性纖維）</td>
+                <td>缺乏彈性（居中）</td>
+              </tr>
+              <tr>
+                <td><strong>管腔內徑</strong></td>
+                <td>中等</td>
+                <td>最狹窄（紅血球排成單行）</td>
+                <td>
+                  <select id="t3_vein_lumen" class="cyber-select">
+                    <option value="" disabled selected>請選擇</option>
+                    <option value="最大">最大（管腔最寬廣）</option>
+                    <option value="中等">中等</option>
+                    <option value="最小">最小</option>
+                  </select>
+                </td>
+              </tr>
+              <tr>
+                <td><strong>血液流速</strong></td>
+                <td>最快</td>
+                <td>
+                  <select id="t3_cap_speed" class="cyber-select">
+                    <option value="" disabled selected>請選擇</option>
+                    <option value="最慢">最慢（最有利於物質交換）</option>
+                    <option value="中等">中等</option>
+                    <option value="最快">最快</option>
+                  </select>
+                </td>
+                <td>中等</td>
+              </tr>
+              <tr>
+                <td><strong>承受血壓</strong></td>
+                <td>最高（摸得到脈搏跳動）</td>
+                <td>中等</td>
+                <td>
+                  <select id="t3_vein_bp" class="cyber-select">
+                    <option value="" disabled selected>請選擇</option>
+                    <option value="最低">最低（近乎為 0）</option>
+                    <option value="最高">最高</option>
+                    <option value="中等">中等</option>
+                  </select>
+                </td>
+              </tr>
+              <tr>
+                <td><strong>內部瓣膜</strong></td>
+                <td>無（僅心室交界有半月瓣）</td>
+                <td>無</td>
+                <td>
+                  <select id="t3_vein_valve" class="cyber-select">
+                    <option value="" disabled selected>請選擇</option>
+                    <option value="有">有（防止血液倒流）</option>
+                    <option value="無">無</option>
+                  </select>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="card-footer-nav" style="margin-top:1.5rem;">
+          <button type="button" class="cyber-btn secondary-btn prev-step-btn" data-prev="2">⏮ 上一關</button>
+          <button type="button" class="cyber-btn primary-btn next-step-btn" data-next="4">下一關：名場景解密 ⏭</button>
+        </div>
+      </article>
+
+      <!-- 關卡 4：任務四 動畫名場景解密 -->
+      <article class="question-card glass-panel hidden" id="stepCard4">
+        <div class="card-title-bar">
+          <span class="card-badge">任務四</span>
+          <h2>動畫名場景解密 ｜ 血管生理作用機制（點選選單）</h2>
+        </div>
+        <div class="card-prompt">
+          <p class="intro-desc">紅血球新人冒險中的兩大著名障礙，正好對應課本最重要的血管特性：</p>
+        </div>
+
+        <div class="q-block">
+          <label class="q-label"><span class="q-seq">Q1.</span> 靜脈內的單向感應閘門：紅血球走錯想倒退逆行，被單向閘門擋下來。請問該構造名稱與在四肢靜脈的主要功能為何？</label>
+          <div class="form-grid-2">
+            <div class="form-group">
+              <label for="t4_valve_name">構造名稱：</label>
+              <div class="select-wrapper">
+                <select id="t4_valve_name" class="cyber-select">
+                  <option value="" disabled selected>請選擇構造</option>
+                  <option value="靜脈瓣膜">靜脈瓣膜（單向閥門）</option>
+                  <option value="微血管孔">微血管孔隙</option>
+                  <option value="動脈壁">動脈彈性環</option>
+                </select>
+              </div>
+            </div>
+            <div class="form-group">
+              <label for="t4_valve_func">四肢靜脈主要功能：</label>
+              <div class="select-wrapper">
+                <select id="t4_valve_func" class="cyber-select">
+                  <option value="" disabled selected>請選擇功能</option>
+                  <option value="防止血液倒流">對抗地心引力，防止血液倒流回腳底</option>
+                  <option value="加速心跳">加快心臟跳動速率</option>
+                  <option value="升高血壓">大幅升高靜脈內的血壓</option>
+                </select>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="q-block" style="margin-top:1.25rem;">
+          <label class="q-label"><span class="q-seq">Q2.</span> 微血管排隊單行道：為什麼微血管「管壁只有單層細胞厚」且「血液流速最慢」？</label>
+          <div class="select-wrapper">
+            <select id="t4_cap_exchange" class="cyber-select">
+              <option value="" disabled selected>請選擇課本核心原因</option>
+              <option value="利於物質交換">管壁薄擴散距離短、流速慢時間充足，最有利於氧氣與養分的交換</option>
+              <option value="保護紅血球">為了保護紅血球不要被撞破</option>
+              <option value="降低體溫">為了讓體溫迅速下降散熱</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="card-footer-nav" style="margin-top:1.5rem;">
+          <button type="button" class="cyber-btn secondary-btn prev-step-btn" data-prev="3">⏮ 上一關</button>
+          <button type="button" class="cyber-btn primary-btn next-step-btn" data-next="5">下一關：雙循環之旅 ⏭</button>
+        </div>
+      </article>
+
+      <!-- 關卡 5：任務五 雙重循環之旅 -->
+      <article class="question-card glass-panel hidden" id="stepCard5">
+        <div class="card-title-bar">
+          <span class="card-badge">任務五</span>
+          <h2>心臟中央車站 ｜ 肺循環與體循環流向（套用「靜房心動出室」口訣）</h2>
+        </div>
+        <div class="card-prompt">
+          <p class="intro-desc">牢記口訣：<strong>「靜房，心動出室」</strong>（靜脈進心房、動脈由心室出）！依序點選正確流向：</p>
+        </div>
+
+        <!-- 肺循環 -->
+        <div class="q-block" style="background:rgba(59, 130, 246, 0.08); padding:1rem; border-radius:10px; border-left:4px solid #3b82f6;">
+          <h3 style="color:#60a5fa; margin-top:0;">🫁 1. 肺循環（目的：排出二氧化碳，吸取新鮮氧氣）</h3>
+          <div style="line-height:2.2; font-size:0.95rem;">
+            【出發】由心室出動脈：
+            <select id="t5_pul_start_chamber" class="cyber-select" style="width:auto; display:inline-block;">
+              <option value="" disabled selected>選擇腔室</option>
+              <option value="右心室">右心室</option>
+              <option value="左心室">左心室</option>
+            </select>
+            <span class="flow-arrow">➔</span> 噴入
+            <select id="t5_pul_vessel" class="cyber-select" style="width:auto; display:inline-block;">
+              <option value="" disabled selected>選擇動脈</option>
+              <option value="肺動脈">肺動脈</option>
+              <option value="主動脈">主動脈</option>
+            </select>
+            <br>
+            【交換】在肺泡旁的【肺微血管】釋放 $CO_2$、吸收 $O_2$，血液由暗紅缺氧血轉為鮮紅色的
+            <select id="t5_pul_blood_type" class="cyber-select" style="width:auto; display:inline-block;">
+              <option value="" disabled selected>選擇血種</option>
+              <option value="充氧血">充氧血（鮮紅色）</option>
+              <option value="缺氧血">缺氧血（暗紅色）</option>
+            </select>
+            <br>
+            【回心】經靜脈進心房：經由
+            <select id="t5_pul_vein" class="cyber-select" style="width:auto; display:inline-block;">
+              <option value="" disabled selected>選擇靜脈</option>
+              <option value="肺靜脈">肺靜脈</option>
+              <option value="大靜脈">大靜脈</option>
+            </select>
+            <span class="flow-arrow">➔</span> 注入
+            <select id="t5_pul_end_chamber" class="cyber-select" style="width:auto; display:inline-block;">
+              <option value="" disabled selected>選擇心房</option>
+              <option value="左心房">左心房</option>
+              <option value="右心房">右心房</option>
+            </select>。
+          </div>
+        </div>
+
+        <!-- 體循環 -->
+        <div class="q-block" style="background:rgba(239, 68, 68, 0.08); padding:1rem; border-radius:10px; border-left:4px solid #ef4444; margin-top:1.25rem;">
+          <h3 style="color:#f87171; margin-top:0;">🧍 2. 體循環（目的：送氧氣養分給全身，回收代謝廢物）</h3>
+          <div style="line-height:2.2; font-size:0.95rem;">
+            【出發】由肌肉壁最厚的心室出動脈：
+            <select id="t5_sys_start_chamber" class="cyber-select" style="width:auto; display:inline-block;">
+              <option value="" disabled selected>選擇心室</option>
+              <option value="左心室">左心室（肌肉壁最厚）</option>
+              <option value="右心室">右心室</option>
+            </select>
+            <span class="flow-arrow">➔</span> 強力壓入
+            <select id="t5_sys_vessel" class="cyber-select" style="width:auto; display:inline-block;">
+              <option value="" disabled selected>選擇動脈</option>
+              <option value="主動脈">主動脈（大動脈）</option>
+              <option value="肺動脈">肺動脈</option>
+            </select>
+            <br>
+            【交換】在全身各器官的【組織微血管】釋放 $O_2$ 與養分，吸收廢物，血液由充氧血轉變為
+            <select id="t5_sys_blood_type" class="cyber-select" style="width:auto; display:inline-block;">
+              <option value="" disabled selected>選擇血種</option>
+              <option value="缺氧血">缺氧血（暗紅色）</option>
+              <option value="充氧血">充氧血（鮮紅色）</option>
+            </select>
+            <br>
+            【回心】經靜脈進心房：經由
+            <select id="t5_sys_vein" class="cyber-select" style="width:auto; display:inline-block;">
+              <option value="" disabled selected>選擇靜脈</option>
+              <option value="大靜脈">大靜脈（上、下大靜脈）</option>
+              <option value="肺靜脈">肺靜脈</option>
+            </select>
+            <span class="flow-arrow">➔</span> 注入
+            <select id="t5_sys_end_chamber" class="cyber-select" style="width:auto; display:inline-block;">
+              <option value="" disabled selected>選擇心房</option>
+              <option value="右心房">右心房</option>
+              <option value="左心房">左心房</option>
+            </select>。
+          </div>
+        </div>
+
+        <div class="card-footer-nav" style="margin-top:1.5rem;">
+          <button type="button" class="cyber-btn secondary-btn prev-step-btn" data-prev="4">⏮ 上一關</button>
+          <button type="button" class="cyber-btn primary-btn next-step-btn" data-next="6">下一關：淋巴密道 ⏭</button>
+        </div>
+      </article>
+
+      <!-- 關卡 6：任務六 淋巴密道 -->
+      <article class="question-card glass-panel hidden" id="stepCard6">
+        <div class="card-title-bar">
+          <span class="card-badge">任務六</span>
+          <h2>體液迷宮 ｜ 淋巴系統三部曲（全下拉點選）</h2>
+        </div>
+        <div class="card-prompt">
+          <p class="intro-desc">在影片中，紅血球一度迷路走到「淋巴管」，白血球大聲喝斥阻止。請依課本概念梳理體液關係：</p>
+        </div>
+
+        <div class="q-block">
+          <label class="q-label"><span class="q-seq">Q1.</span> 體液身分轉變歷程：</label>
+          <div style="line-height:2.2; font-size:0.95rem;">
+            1. 血液中的【血漿】從組織微血管滲出到細胞間隙，此時稱為
+            <select id="t6_fluid_tissue" class="cyber-select" style="width:auto; display:inline-block;">
+              <option value="" disabled selected>請選擇</option>
+              <option value="組織液">組織液</option>
+              <option value="淋巴">淋巴</option>
+              <option value="紅血球">紅血球</option>
+            </select>。<br>
+            2. 部分組織液滲入盲端的淋巴管後，改稱為
+            <select id="t6_fluid_lymph" class="cyber-select" style="width:auto; display:inline-block;">
+              <option value="" disabled selected>請選擇</option>
+              <option value="淋巴">淋巴（淋巴液）</option>
+              <option value="血漿">血漿</option>
+              <option value="膽汁">膽汁</option>
+            </select>。<br>
+            3. 淋巴在淋巴管內流動，途中會經過無數個膨大的
+            <select id="t6_fluid_node" class="cyber-select" style="width:auto; display:inline-block;">
+              <option value="" disabled selected>請選擇</option>
+              <option value="淋巴結">淋巴結（內含大量白血球可過濾異物）</option>
+              <option value="靜脈瓣">靜脈瓣</option>
+              <option value="心室">心室</option>
+            </select>。<br>
+            4. 最後匯集注入人體的
+            <select id="t6_fluid_return" class="cyber-select" style="width:auto; display:inline-block;">
+              <option value="" disabled selected>請選擇</option>
+              <option value="大靜脈">大靜脈（靜脈）</option>
+              <option value="大動脈">大動脈</option>
+              <option value="左心室">左心室</option>
+            </select>，重回血液循環！
+          </div>
+        </div>
+
+        <div class="q-block" style="margin-top:1.25rem;">
+          <label class="q-label"><span class="q-seq">Q2.</span> 當喉嚨或局部受到細菌感染時，附近的淋巴結常會腫大微痛，主要原因是？</label>
+          <div class="select-wrapper">
+            <select id="t6_node_swollen" class="cyber-select">
+              <option value="" disabled selected>請選擇原因</option>
+              <option value="免疫細胞增生防禦">淋巴結內的白血球大量增生，積極吞噬病原體進行防衛</option>
+              <option value="紅血球堵塞">紅血球走錯路卡在裡面破裂</option>
+              <option value="水分蒸發">水分散失過多導致乾燥</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="card-footer-nav" style="margin-top:1.5rem;">
+          <button type="button" class="cyber-btn secondary-btn prev-step-btn" data-prev="5">⏮ 上一關</button>
+          <button type="button" class="cyber-btn primary-btn next-step-btn" data-next="7">下一關：素養檢核測驗 ⏭</button>
+        </div>
+      </article>
+
+      <!-- 關卡 7：任務七 素養檢核測驗 (10 題南一課本精準對接選擇題) -->
+      <article class="question-card glass-panel hidden" id="stepCard7">
+        <div class="card-title-bar">
+          <span class="card-badge">任務七</span>
+          <h2>單元素養檢核測驗 ｜ 10 題精華驗收（單選點選）</h2>
+        </div>
+        <div class="card-prompt">
+          <p class="intro-desc">請選出一個最適當的選項（每題 10 分，滿分 100 分）：</p>
+        </div>
+
+        <!-- 題 1 -->
+        <div class="q-block">
+          <label class="q-label"><span class="q-seq">1.</span> 主角紅血球在體內負責運送氧氣，下列關於成熟紅血球特徵的敘述何者正確？</label>
+          <div class="choice-group">
+            <label class="choice-opt-label"><input type="radio" name="mcq_1" value="A"> <span>(A) 成熟紅血球具有明顯的細胞核以控制分裂</span></label>
+            <label class="choice-opt-label"><input type="radio" name="mcq_1" value="B"> <span>(B) 外形呈雙凹圓盤狀，富含血紅素能結合氧氣</span></label>
+            <label class="choice-opt-label"><input type="radio" name="mcq_1" value="C"> <span>(C) 血液中的葡萄糖主要也是由紅血球負責運送</span></label>
+            <label class="choice-opt-label"><input type="radio" name="mcq_1" value="D"> <span>(D) 是三種血球中體積最大且數量最少的一種</span></label>
+          </div>
+        </div>
+
+        <!-- 題 2 -->
+        <div class="q-block">
+          <label class="q-label"><span class="q-seq">2.</span> 白血球（嗜中性球 1146）在巡邏作戰時的生理特性何者正確？</label>
+          <div class="choice-group">
+            <label class="choice-opt-label"><input type="radio" name="mcq_2" value="A"> <span>(A) 健康人體內的白血球數量遠高於紅血球</span></label>
+            <label class="choice-opt-label"><input type="radio" name="mcq_2" value="B"> <span>(B) 白血球缺乏細胞核，無法進行生命活動</span></label>
+            <label class="choice-opt-label"><input type="radio" name="mcq_2" value="C"> <span>(C) 能藉由變形運動穿出微血管管壁吞噬病原體</span></label>
+            <label class="choice-opt-label"><input type="radio" name="mcq_2" value="D"> <span>(D) 遇到細菌時會釋放血紅素將其窒息</span></label>
+          </div>
+        </div>
+
+        <!-- 題 3 -->
+        <div class="q-block">
+          <label class="q-label"><span class="q-seq">3.</span> 人體擦傷流血時，血小板隊長帶著隊員修補破洞。下列關於血小板敘述何者錯誤？</label>
+          <div class="choice-group">
+            <label class="choice-opt-label"><input type="radio" name="mcq_3" value="A"> <span>(A) 形狀不規則，由細胞破片形成</span></label>
+            <label class="choice-opt-label"><input type="radio" name="mcq_3" value="B"> <span>(B) 不具細胞核</span></label>
+            <label class="choice-opt-label"><input type="radio" name="mcq_3" value="C"> <span>(C) 體積在三種血球中最小</span></label>
+            <label class="choice-opt-label"><input type="radio" name="mcq_3" value="D"> <span>(D) 含有大量血紅素能負責運送養分</span></label>
+          </div>
+        </div>
+
+        <!-- 題 4 -->
+        <div class="q-block">
+          <label class="q-label"><span class="q-seq">4.</span> 顯微鏡下觀察人類血液抹片，下列配對完全正確的是？</label>
+          <div class="choice-group">
+            <label class="choice-opt-label"><input type="radio" name="mcq_4" value="A"> <span>(A) 紅血球：有細胞核、數量最多、負責運送氧氣</span></label>
+            <label class="choice-opt-label"><input type="radio" name="mcq_4" value="B"> <span>(B) 白血球：有細胞核、體積最大、負責吞噬防禦</span></label>
+            <label class="choice-opt-label"><input type="radio" name="mcq_4" value="C"> <span>(C) 血小板：有細胞核、體積最小、負責凝血</span></label>
+            <label class="choice-opt-label"><input type="radio" name="mcq_4" value="D"> <span>(D) 白血球：無細胞核、形狀固定、負責運送水分</span></label>
+          </div>
+        </div>
+
+        <!-- 題 5 -->
+        <div class="q-block">
+          <label class="q-label"><span class="q-seq">5.</span> 微血管是血液與組織細胞進行物質交換的場所，其構造特徵為何？</label>
+          <div class="choice-group">
+            <label class="choice-opt-label"><input type="radio" name="mcq_5" value="A"> <span>(A) 管壁最厚、富有肌肉與彈性</span></label>
+            <label class="choice-opt-label"><input type="radio" name="mcq_5" value="B"> <span>(B) 管壁僅一層細胞厚、血液流速最慢</span></label>
+            <label class="choice-opt-label"><input type="radio" name="mcq_5" value="C"> <span>(C) 內部具有許多瓣膜以維持血壓</span></label>
+            <label class="choice-opt-label"><input type="radio" name="mcq_5" value="D"> <span>(D) 血液流速最快、內徑最寬廣</span></label>
+          </div>
+        </div>
+
+        <!-- 題 6 -->
+        <div class="q-block">
+          <label class="q-label"><span class="q-seq">6.</span> 關於人體內「瓣膜」的分布與功能，下列何項敘述完全正確？</label>
+          <div class="choice-group">
+            <label class="choice-opt-label"><input type="radio" name="mcq_6" value="A"> <span>(A) 心房和心室之間有瓣膜，可防止心室血液逆流回心房</span></label>
+            <label class="choice-opt-label"><input type="radio" name="mcq_6" value="B"> <span>(B) 左心房和右心房之間有瓣膜相通</span></label>
+            <label class="choice-opt-label"><input type="radio" name="mcq_6" value="C"> <span>(C) 全身的所有微血管內壁都布滿微小瓣膜</span></label>
+            <label class="choice-opt-label"><input type="radio" name="mcq_6" value="D"> <span>(D) 動脈管壁內有大量瓣膜防止脈搏反彈</span></label>
+          </div>
+        </div>
+
+        <!-- 題 7 -->
+        <div class="q-block">
+          <label class="q-label"><span class="q-seq">7.</span> 比較動脈、微血管與靜脈承受的「血壓大小」，何者正確？</label>
+          <div class="choice-group">
+            <label class="choice-opt-label"><input type="radio" name="mcq_7" value="A"> <span>(A) 動脈 ＞ 微血管 ＞ 靜脈</span></label>
+            <label class="choice-opt-label"><input type="radio" name="mcq_7" value="B"> <span>(B) 微血管 ＞ 動脈 ＞ 靜脈</span></label>
+            <label class="choice-opt-label"><input type="radio" name="mcq_7" value="C"> <span>(C) 靜脈 ＞ 微血管 ＞ 動脈</span></label>
+            <label class="choice-opt-label"><input type="radio" name="mcq_7" value="D"> <span>(D) 三種血管承受的血壓皆完全相同</span></label>
+          </div>
+        </div>
+
+        <!-- 題 8 -->
+        <div class="q-block">
+          <label class="q-label"><span class="q-seq">8.</span> 老師教的口訣「靜房，心動出室」！缺氧血從全身流回心臟後，準備前往肺部的順序為何？</label>
+          <div class="choice-group">
+            <label class="choice-opt-label"><input type="radio" name="mcq_8" value="A"> <span>(A) 左心房 ➔ 左心室 ➔ 主動脈</span></label>
+            <label class="choice-opt-label"><input type="radio" name="mcq_8" value="B"> <span>(B) 右心房 ➔ 右心室 ➔ 肺動脈</span></label>
+            <label class="choice-opt-label"><input type="radio" name="mcq_8" value="C"> <span>(C) 右心房 ➔ 左心室 ➔ 肺靜脈</span></label>
+            <label class="choice-opt-label"><input type="radio" name="mcq_8" value="D"> <span>(D) 左心室 ➔ 右心室 ➔ 肺微血管</span></label>
+          </div>
+        </div>
+
+        <!-- 題 9 -->
+        <div class="q-block">
+          <label class="q-label"><span class="q-seq">9.</span> 在「體循環」過程中，血液流經全身組織微血管進行交換後的改變何者正確？</label>
+          <div class="choice-group">
+            <label class="choice-opt-label"><input type="radio" name="mcq_9" value="A"> <span>(A) 氧氣含量增加，二氧化碳減少</span></label>
+            <label class="choice-opt-label"><input type="radio" name="mcq_9" value="B"> <span>(B) 血液由暗紅色缺氧血變成鮮紅色充氧血</span></label>
+            <label class="choice-opt-label"><input type="radio" name="mcq_9" value="C"> <span>(C) 血液由鮮紅色充氧血變成暗紅色缺氧血</span></label>
+            <label class="choice-opt-label"><input type="radio" name="mcq_9" value="D"> <span>(D) 葡萄糖與養分濃度大幅提升</span></label>
+          </div>
+        </div>
+
+        <!-- 題 10 -->
+        <div class="q-block">
+          <label class="q-label"><span class="q-seq">10.</span> 關於淋巴循環系統與體液流動的敘述，下列何者完全符合課本內容？</label>
+          <div class="choice-group">
+            <label class="choice-opt-label"><input type="radio" name="mcq_10" value="A"> <span>(A) 淋巴中含有大量紅血球負責運送二氧化碳</span></label>
+            <label class="choice-opt-label"><input type="radio" name="mcq_10" value="B"> <span>(B) 血漿滲出微血管成組織液，組織液滲入淋巴管成淋巴</span></label>
+            <label class="choice-opt-label"><input type="radio" name="mcq_10" value="C"> <span>(C) 淋巴管最終直接將淋巴注入左心室</span></label>
+            <label class="choice-opt-label"><input type="radio" name="mcq_10" value="D"> <span>(D) 淋巴系統完全封閉，絕對不會流入血液循環中</span></label>
+          </div>
+        </div>
+
+        <!-- 交卷按鈕 -->
+        <div style="margin-top:2rem; text-align:center;">
+          <button type="button" class="cyber-btn primary-btn" id="btnSubmitAll" style="font-size:1.15rem; padding:0.85rem 2.5rem; width:100%; max-width:400px;">
+            🚀 確認完成，立即交卷評分！
+          </button>
+        </div>
+
+        <div class="card-footer-nav" style="margin-top:1.5rem;">
+          <button type="button" class="cyber-btn secondary-btn prev-step-btn" data-prev="6">⏮ 上一關</button>
+          <button type="button" class="cyber-btn primary-btn" disabled>🏁 已達最後一關</button>
+        </div>
+      </article>
+
+    </div>
+  </main>
+
+  <!-- 跑班平板車四重防護 Modal 1：身分覆核門禁 (防前一生誤交/覆蓋) -->
+  <div class="modal-overlay hidden" id="identityVerifyModal">
+    <div class="modal-card glass-panel" style="max-width:480px; text-align:center; border:2px solid #3b82f6;">
+      <div style="font-size:3rem; margin-bottom:0.5rem;">🛡️</div>
+      <h3 style="color:#60a5fa; margin-bottom:0.5rem;">偵測到平板存有作答紀錄</h3>
+      <p style="color:#e2e8f0; font-size:0.95rem; line-height:1.6;" id="verifyModalDesc">
+        上一位同學填寫資料為：<br>
+        <span id="savedClassSeatName" style="color:#f59e0b; font-weight:700; font-size:1.1rem;">---</span>
+      </p>
+      <div style="display:flex; flex-direction:column; gap:0.75rem; margin-top:1.5rem;">
+        <button type="button" class="cyber-btn primary-btn" id="btnContinueDraft" style="width:100%;">
+          🙋‍♂️ 我是該生，繼續作答
+        </button>
+        <button type="button" class="cyber-btn secondary-btn" id="btnResetForNewStudent" style="width:100%; border-color:#ef4444; color:#fca5a5;">
+          🔄 不是我！我是新同學（一鍵清空上一位）
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 跑班平板車四重防護 Modal 2：成積結算成果卡 (雙向按鈕) -->
+  <div class="modal-overlay hidden" id="resultModal">
+    <div class="modal-card glass-panel" style="max-width:520px; text-align:center;">
+      <div style="font-size:3.5rem; margin-bottom:0.5rem;">🏆</div>
+      <h2 style="color:#38bdf8; margin-bottom:0.25rem;">作答完成！成績報告</h2>
+      <p id="resStudentInfo" style="color:#94a3b8; font-size:0.95rem; margin-bottom:1rem;">---</p>
+      
+      <div style="background:rgba(15, 23, 42, 0.7); border:1px solid rgba(56, 189, 248, 0.3); border-radius:12px; padding:1.25rem; margin-bottom:1.5rem;">
+        <div style="font-size:1rem; color:#94a3b8;">素養測驗總得分</div>
+        <div style="font-size:3.2rem; font-weight:900; color:#4ade80; font-family:'Orbitron', sans-serif;" id="resScore">--</div>
+        <div style="font-size:0.85rem; color:#cbd5e1;" id="resDetail">客觀素養選擇題 10 題答對 -- 題</div>
+      </div>
+
+      <div style="display:flex; gap:0.75rem;">
+        <button type="button" class="cyber-btn secondary-btn" id="btnCloseResult" style="flex:1;">
+          👀 查看完整作答
+        </button>
+        <button type="button" class="cyber-btn primary-btn" id="btnNextStudentReset" style="flex:1.2; background:linear-gradient(135deg, #10b981, #059669);">
+          🔄 換下一位同學全新作答
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script src="circulation.js?v=3.2"></script>
+</body>
+</html>
