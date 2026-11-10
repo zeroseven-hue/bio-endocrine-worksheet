@@ -464,16 +464,18 @@ function handleSubmit() {
 // 雲端 GAS 提交 (支援原地覆蓋與斷網保護)
 function submitToGasBackend(data, score) {
   // 正課通用 GAS 網址 (與 4-1, 4-2 共用後端 API)
-  const GAS_URL = "https://script.google.com/macros/s/AKfycbwPz2t5Z3f6T6Ew5L7S9eYg_EXAMPLE/exec"; // 由教師儀表板設定
+  const GAS_URL = "https://script.google.com/macros/s/AKfycby2-Pj2Nz1NFonB11rtsHXMMGU2qxLxvbjV0KCu4pi4oNXv2QLp0tK8m1XNYWvlCRJoEA/exec";
 
   const payload = {
+    sheetId: "3-2",
     unit: "3-2 人體的循環",
     studentClass: data.sClass,
-    studentSeat: data.sSeat, // 後端會強制補單引號 "'" + seat，鎖定前導零
+    studentSeat: data.sSeat,
     studentName: data.sName,
+    seatOrGroup: data.sSeat + " 號",
     score: score,
     details: JSON.stringify(data),
-    submitTime: new Date().toISOString()
+    timestamp: new Date().toLocaleString('zh-TW', { timeZone: 'Asia/Taipei' })
   };
 
   // 8 秒逾時防護
@@ -483,7 +485,7 @@ function submitToGasBackend(data, score) {
   fetch(GAS_URL, {
     method: "POST",
     mode: "no-cors",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "text/plain;charset=utf-8" },
     body: JSON.stringify(payload),
     signal: controller.signal
   }).then(() => {

@@ -16,6 +16,14 @@ const COURSE_CONFIG = {
   // 收錄生物章節學習單清單（未來新增單元只需在此擴充）
   units: [
     {
+      id: "3-2",
+      file: "3-2-circulation.html",
+      title: "【單元 3-2】人體的循環 數位互動學習單",
+      badge: "上學期 · 循環系統",
+      desc: "工作細胞第08話、紅血球雙凹盤、血管矩陣、心臟雙循環口訣（靜房心動出室）、淋巴三部曲",
+      status: "active"
+    },
+    {
       id: "4-2",
       file: "4-2-endocrine.html",
       title: "【單元 4-2】內分泌系統 數位互動學習單",
