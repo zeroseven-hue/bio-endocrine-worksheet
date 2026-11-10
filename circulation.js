@@ -14,6 +14,59 @@ const STORAGE_KEY_SUBMITTED = "BIO_3_2_SUBMITTED_RECORD";
 const STORAGE_KEY_TIMESTAMP = "BIO_3_2_LAST_TIMESTAMP";
 
 // 2. 素養選擇題標準答案與解析 (符合南一七年級課綱)
+
+// 任務一～六 標準答案字典 (總分 50 分)
+const TASK_1_TO_6_ANSWERS = {
+  // 任務一 (10格, 每格 1.5分 = 15分)
+  t1_rbc_nucleus: { ans: "無", pts: 1.5 },
+  t1_wbc_nucleus: { ans: "有", pts: 1.5 },
+  t1_plt_nucleus: { ans: "無", pts: 1.5 },
+  t1_wbc_size: { ans: "最大", pts: 1.5 },
+  t1_plt_size: { ans: "最小", pts: 1.5 },
+  t1_rbc_num: { ans: "最多", pts: 1.5 },
+  t1_wbc_num: { ans: "最少", pts: 1.5 },
+  t1_rbc_func: { ans: "攜帶氧氣", pts: 1.5 },
+  t1_wbc_func: { ans: "吞噬病原體", pts: 1.5 },
+  t1_plt_func: { ans: "促進血液凝固", pts: 1.5 },
+
+  // 任務二 (2格, 每格 1.5分 = 3分)
+  t2_rbc_advantage: { ans: "A", pts: 1.5 },
+  t2_wbc_motion: { ans: "變形運動", pts: 1.5 },
+
+  // 任務三 (7格, 每格 1.5分 = 10.5分)
+  t3_art_dir: { ans: "離心", pts: 1.5 },
+  t3_vein_dir: { ans: "回心", pts: 1.5 },
+  t3_cap_wall: { ans: "最薄", pts: 1.5 },
+  t3_vein_lumen: { ans: "最大", pts: 1.5 },
+  t3_cap_speed: { ans: "最慢", pts: 1.5 },
+  t3_vein_bp: { ans: "最低", pts: 1.5 },
+  t3_vein_valve: { ans: "有", pts: 1.5 },
+
+  // 任務四 (3格, 2格*1.5 + 1格*1.5 = 4.5分)
+  t4_valve_name: { ans: "靜脈瓣膜", pts: 1.5 },
+  t4_valve_func: { ans: "防止血液倒流", pts: 1.5 },
+  t4_cap_exchange: { ans: "利於物質交換", pts: 1.5 },
+
+  // 任務五 (10格, 每格 1分 = 10分)
+  t5_pul_start_chamber: { ans: "右心室", pts: 1.0 },
+  t5_pul_vessel: { ans: "肺動脈", pts: 1.0 },
+  t5_pul_blood_type: { ans: "充氧血", pts: 1.0 },
+  t5_pul_vein: { ans: "肺靜脈", pts: 1.0 },
+  t5_pul_end_chamber: { ans: "左心房", pts: 1.0 },
+  t5_sys_start_chamber: { ans: "左心室", pts: 1.0 },
+  t5_sys_vessel: { ans: "主動脈", pts: 1.0 },
+  t5_sys_blood_type: { ans: "缺氧血", pts: 1.0 },
+  t5_sys_vein: { ans: "大靜脈", pts: 1.0 },
+  t5_sys_end_chamber: { ans: "右心房", pts: 1.0 },
+
+  // 任務六 (5格, 每格 1.4分 = 7分)
+  t6_fluid_tissue: { ans: "組織液", pts: 1.4 },
+  t6_fluid_lymph: { ans: "淋巴", pts: 1.4 },
+  t6_fluid_node: { ans: "淋巴結", pts: 1.4 },
+  t6_fluid_return: { ans: "大靜脈", pts: 1.4 },
+  t6_node_swollen: { ans: "免疫細胞增生防禦", pts: 1.4 }
+};
+
 const MCQ_ANSWERS = {
   mcq_1: { ans: "B", explain: "成熟紅血球無細胞核，外形呈雙凹圓盤狀，富含血紅素負責攜氧。" },
   mcq_2: { ans: "C", explain: "白血球具細胞核，能產生變形運動穿出微血管管壁進行吞噬防禦。" },
@@ -433,25 +486,46 @@ function handleSubmit() {
     return;
   }
 
-  // 計算第 7 關 10 題素養客觀題分數 (每題 10 分)
-  let score = 0;
+  // 1. 計算任務一～任務六 基礎歷程分 (滿分 50 分)
+  let task1To6Score = 0;
+  let task1To6Filled = 0;
+  Object.keys(TASK_1_TO_6_ANSWERS).forEach(key => {
+    const userVal = data[key];
+    const target = TASK_1_TO_6_ANSWERS[key];
+    if (userVal) task1To6Filled++;
+    if (userVal === target.ans) {
+      task1To6Score += target.pts;
+    }
+  });
+  task1To6Score = Math.round(task1To6Score * 10) / 10; // 保留一位小數
+
+  // 2. 計算任務七 素養檢核測驗 (10題每題加重為5分，滿分 50 分)
+  let mcqScore = 0;
   let correctCount = 0;
   for (let i = 1; i <= 10; i++) {
     const userAns = data.mcq[`mcq_${i}`];
     const target = MCQ_ANSWERS[`mcq_${i}`].ans;
     if (userAns === target) {
-      score += 10;
+      mcqScore += 5;
       correctCount++;
     }
   }
 
+  // 3. 全卷總成績 (滿分 100 分)
+  const totalScore = Math.round(task1To6Score + mcqScore);
+
   // 渲染第 7 關素養選擇題之答案與解析
   renderMCQExplanations(data);
 
-  // 成果卡顯示
+  // 成果卡顯示完整雙重評分
   document.getElementById("resStudentInfo").textContent = `${data.sClass} 班 ${data.sSeat} 號 ${data.sName} 同學`;
-  document.getElementById("resScore").textContent = score;
-  document.getElementById("resDetail").textContent = `客觀素養選擇題 10 題答對 ${correctCount} 題，全卷任務已妥善紀錄！`;
+  document.getElementById("resScore").textContent = totalScore;
+  document.getElementById("resDetail").innerHTML = `
+    <div style="line-height:1.6; margin-top:4px;">
+      ✨ <strong>基礎歷程表現（任務一～六）：</strong>${task1To6Score} / 50 分<br>
+      🎯 <strong>核心素養檢核（任務七選擇）：</strong>${mcqScore} / 50 分（答對 ${correctCount} 題）
+    </div>
+  `;
   document.getElementById("resultModal").classList.remove("hidden");
 
   // 標記已交卷
@@ -461,11 +535,11 @@ function handleSubmit() {
   }));
 
   // 背景自動提交後端 GAS (8 秒 Wi-Fi 降級防禦)
-  submitToGasBackend(data, score);
+  submitToGasBackend(data, totalScore, task1To6Score, mcqScore);
 }
 
 // 雲端 GAS 提交 (支援原地覆蓋與斷網保護)
-function submitToGasBackend(data, score) {
+function submitToGasBackend(data, totalScore, task1To6Score, mcqScore) {
   // 正課通用 GAS 網址 (與 4-1, 4-2 共用後端 API)
   const GAS_URL = "https://script.google.com/macros/s/AKfycby2-Pj2Nz1NFonB11rtsHXMMGU2qxLxvbjV0KCu4pi4oNXv2QLp0tK8m1XNYWvlCRJoEA/exec";
 
@@ -476,8 +550,13 @@ function submitToGasBackend(data, score) {
     studentSeat: data.sSeat,
     studentName: data.sName,
     seatOrGroup: data.sSeat + " 號",
-    score: score,
-    details: JSON.stringify(data),
+    score: totalScore,
+    details: JSON.stringify({
+      totalScore: totalScore,
+      task1To6Score: task1To6Score,
+      mcqScore: mcqScore,
+      formData: data
+    }),
     timestamp: new Date().toLocaleString('zh-TW', { timeZone: 'Asia/Taipei' })
   };
 
