@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="zh-TW">
 <head>
   <meta charset="UTF-8">
@@ -9,6 +9,97 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&family=Orbitron:wght@600;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
 
+<style id="pinGatekeeperStyle">
+/* 🔒 教師安全防護 PIN 密碼鎖樣式 */
+.pin-modal-overlay {
+  position: fixed !important;
+  top: 0 !important; left: 0 !important; right: 0 !important; bottom: 0 !important;
+  background: rgba(15, 23, 42, 0.96) !important;
+  backdrop-filter: blur(16px) !important;
+  display: flex !important;
+  justify-content: center !important;
+  align-items: center !important;
+  z-index: 9999999 !important;
+}
+.pin-modal-overlay.hidden {
+  display: none !important;
+}
+.pin-modal-card {
+  background: #1e293b !important;
+  border: 2px solid #c084fc !important;
+  border-radius: 24px !important;
+  padding: 36px 28px !important;
+  text-align: center !important;
+  max-width: 420px !important;
+  width: 90% !important;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.7) !important;
+  animation: pinPopIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) !important;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Microsoft JhengHei", sans-serif !important;
+}
+@keyframes pinPopIn {
+  from { opacity: 0; transform: scale(0.92); }
+  to { opacity: 1; transform: scale(1); }
+}
+.pin-icon {
+  font-size: 3.2rem !important;
+  margin-bottom: 12px !important;
+  line-height: 1 !important;
+}
+.pin-modal-card h2 {
+  font-size: 1.45rem !important;
+  color: #f8fafc !important;
+  margin: 0 0 10px 0 !important;
+  font-weight: 800 !important;
+}
+.pin-modal-card p {
+  color: #94a3b8 !important;
+  font-size: 0.92rem !important;
+  margin-bottom: 20px !important;
+  line-height: 1.5 !important;
+}
+.pin-modal-card input {
+  width: 82% !important;
+  padding: 12px !important;
+  font-size: 1.6rem !important;
+  text-align: center !important;
+  letter-spacing: 6px !important;
+  background: #0f172a !important;
+  border: 2px solid #334155 !important;
+  border-radius: 12px !important;
+  color: #c084fc !important;
+  margin-bottom: 12px !important;
+  outline: none !important;
+  box-sizing: border-box !important;
+}
+.pin-modal-card input:focus {
+  border-color: #c084fc !important;
+  box-shadow: 0 0 12px rgba(56, 189, 248, 0.4) !important;
+}
+.pin-error-text {
+  color: #f87171 !important;
+  font-size: 0.88rem !important;
+  font-weight: 700 !important;
+  min-height: 22px !important;
+  margin-bottom: 14px !important;
+}
+.btn-pin-submit {
+  width: 100% !important;
+  padding: 13px !important;
+  background: linear-gradient(135deg, #7c3aed, #6d28d9) !important;
+  color: white !important;
+  border: none !important;
+  border-radius: 12px !important;
+  font-weight: 800 !important;
+  font-size: 1.05rem !important;
+  cursor: pointer !important;
+  transition: opacity 0.2s, transform 0.1s !important;
+  box-sizing: border-box !important;
+}
+.btn-pin-submit:hover {
+  opacity: 0.95 !important;
+  transform: translateY(-1px) !important;
+}
+</style>
 
 </head>
 <body>
@@ -1277,8 +1368,9 @@
           </div>
         </div>
       </div>
-      <div class="modal-footer">
-        <button type="button" class="cyber-btn primary-btn" id="btnModalClose">完成並重置畫面（交回平板）</button>
+      <div class="modal-footer" style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
+        <button type="button" class="cyber-btn primary-btn" id="btnModalClose" style="flex: 1;">完成並關閉（查看作答）</button>
+        <button type="button" class="cyber-btn" id="btnModalFreshStudent" style="flex: 1; background: #fee2e2; color: #dc2626; border: 1.5px solid #fca5a5; font-weight: 800;">🔄 換下一位同學全新作答</button>
       </div>
     </div>
   </div>
@@ -1289,5 +1381,20 @@
   <!-- 引入主腳本 (附帶版本號強制作廢舊快取) -->
 <script src="nervous.js?v=4.0"></script>
 
+<!-- 🔒 教師安全防護 PIN 密碼解鎖 Modal -->
+<div id="pinLockModal" class="pin-modal-overlay">
+  <div class="pin-modal-card">
+    <div class="pin-icon">🔒</div>
+    <h2>生物正課 數位學習單平台 安全鎖</h2>
+    <p>本平台為國中生物正課數位互動學習單系統，請輸入教師管理密碼解鎖進入：</p>
+    <input type="password" id="pinInput" placeholder="請輸入密碼" maxlength="10" autocomplete="off">
+    <div id="pinErrorMsg" class="pin-error-text"></div>
+    <button id="btnSubmitPin" class="btn-pin-submit">🔓 解鎖進入系統</button>
+  </div>
+</div>
+
+
+<script>
+//
 </body>
 </html>

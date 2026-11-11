@@ -431,6 +431,31 @@
     }
     .seat-card.absent .seat-name { color: #94a3b8; }
     .seat-card.absent .seat-status-text { color: #64748b; }
+    /* ⚠️ 同號衝突警示狀態 (兩位以上不同姓名誤劃同號) */
+    .seat-card.conflict {
+      background: #fef3c7 !important;
+      border: 2px solid #f59e0b !important;
+      box-shadow: 0 0 10px rgba(245, 158, 11, 0.35) !important;
+      animation: conflictPulse 1.8s infinite ease-in-out;
+    }
+    @keyframes conflictPulse {
+      0%, 100% { border-color: #f59e0b; box-shadow: 0 0 6px rgba(245, 158, 11, 0.3); }
+      50% { border-color: #d97706; box-shadow: 0 0 14px rgba(217, 119, 6, 0.6); }
+    }
+    .seat-card.conflict .seat-num { color: #b45309 !important; font-weight: 900; }
+    .seat-card.conflict .seat-name { color: #b45309 !important; font-weight: 800; }
+    .seat-conflict-badge {
+      display: inline-block;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.75rem;
+      font-weight: 800;
+      color: #92400e;
+      background: #fde68a;
+      padding: 1px 5px;
+      border-radius: 4px;
+      border: 1px solid #fcd34d;
+    }
+
 
     /* 隱藏分數切換 */
     .seat-grid.hide-score .seat-score-badge {
@@ -662,8 +687,14 @@
         </button>
 
         <!-- 刷新資料 -->
-        <button type="button" class="btn-tool btn-refresh" onclick="fetchLiveDataFromGAS()">
-          🔄 刷新資料
+        <!-- 即時自動同步開關 (5秒倒數) -->
+        <button type="button" id="btnAutoRefresh" class="btn-tool" onclick="toggleAutoRefresh()" style="background: rgba(16, 185, 129, 0.25); border-color: #34d399; font-weight: 800;" title="每 5 秒自動同步最新繳交紀錄">
+          🟢 即時同步 <span id="autoRefreshCountdown" style="font-family: 'JetBrains Mono', monospace; font-size: 0.85rem; background: rgba(0,0,0,0.25); padding: 2px 6px; border-radius: 4px; margin-left: 3px;">5s</span>
+        </button>
+
+        <!-- 手動刷新資料 -->
+        <button type="button" id="btnManualRefresh" class="btn-tool btn-refresh" onclick="fetchLiveDataFromGAS(false)">
+          🔄 立即刷新
         </button>
       </div>
     </div>
@@ -778,7 +809,14 @@
   <!-- 引入共用設定與工具函式 (附帶版本號強制作廢舊快取) -->
   <script src="assets/js/common.js?v=2.1"></script>
   <script>
+    // ⏱️ 5 秒自動同步計時器全域常數與狀態
+    const AUTO_REFRESH_INTERVAL_SECONDS = 5;
+    let autoRefreshCountdown = AUTO_REFRESH_INTERVAL_SECONDS;
+    let isAutoRefreshActive = true;
+    let autoRefreshTimer = null;
+
     let currentLiveRecords = [];
+    let currentSeatDataMap = new Map();
     let absentSeatsSet = new Set();
     let isScoreHidden = false;
 
@@ -793,6 +831,9 @@
 
       // 從 GAS 抓取第一筆最新資料
       fetchLiveDataFromGAS();
+
+      // 啟動 5 秒即時同步引擎
+      initAutoRefresh();
     });
 
     // 2. 配色切換
@@ -842,20 +883,78 @@
     function handleClassOrUnitChange() {
       const classVal = document.getElementById('selectClass').value;
       document.getElementById('displayClassTitle').textContent = classVal;
-      fetchLiveDataFromGAS();
+      autoRefreshCountdown = AUTO_REFRESH_INTERVAL_SECONDS;
+      updateAutoRefreshUi();
+      fetchLiveDataFromGAS(false);
     }
 
-    // 7. 從 Google Apps Script 雙向抓取即時資料
-    async function fetchLiveDataFromGAS() {
+    // ⏱️ 6.1 即時自動同步控制引擎 (5 秒倒數)
+    function initAutoRefresh() {
+      if (autoRefreshTimer) clearInterval(autoRefreshTimer);
+      autoRefreshTimer = setInterval(() => {
+        if (!isAutoRefreshActive) return;
+
+        // 若老師正在開啟彈窗操作 (如裁決衝突、補登或密碼解鎖)，暫停自動刷新避免干擾
+        const studentModal = document.getElementById('studentDetailModal');
+        const manualModal = document.getElementById('manualGradeModal');
+        const pinModal = document.getElementById('pinLockModal');
+        const isModalOpen = (studentModal && studentModal.classList.contains('active')) ||
+                            (manualModal && manualModal.classList.contains('active')) ||
+                            (pinModal && !pinModal.classList.contains('hidden'));
+
+        if (isModalOpen) {
+          return;
+        }
+
+        autoRefreshCountdown--;
+        if (autoRefreshCountdown <= 0) {
+          autoRefreshCountdown = AUTO_REFRESH_INTERVAL_SECONDS;
+          fetchLiveDataFromGAS(true);
+        }
+        updateAutoRefreshUi();
+      }, 1000);
+    }
+
+    function toggleAutoRefresh() {
+      isAutoRefreshActive = !isAutoRefreshActive;
+      if (isAutoRefreshActive) {
+        autoRefreshCountdown = AUTO_REFRESH_INTERVAL_SECONDS;
+        fetchLiveDataFromGAS(false);
+      }
+      updateAutoRefreshUi();
+    }
+
+    function updateAutoRefreshUi() {
+      const btn = document.getElementById('btnAutoRefresh');
+      const badge = document.getElementById('autoRefreshCountdown');
+      if (!btn || !badge) return;
+
+      if (isAutoRefreshActive) {
+        btn.style.background = 'rgba(16, 185, 129, 0.25)';
+        btn.style.borderColor = '#34d399';
+        badge.textContent = `${autoRefreshCountdown}s`;
+        badge.style.display = 'inline-block';
+        btn.title = `即時同步中：每 ${AUTO_REFRESH_INTERVAL_SECONDS} 秒自動抓取最新名單（點擊可暫停）`;
+      } else {
+        btn.style.background = 'rgba(239, 68, 68, 0.25)';
+        btn.style.borderColor = '#f87171';
+        badge.textContent = '已暫停';
+        badge.style.display = 'inline-block';
+        btn.title = '已暫停自動同步（點擊可重啟）';
+      }
+    }
+
+    // 7. 從 Google Apps Script 雙向抓取即時資料 (支援背景無感靜默刷新)
+    async function fetchLiveDataFromGAS(isSilent = false) {
       const classVal = document.getElementById('selectClass').value;
       const unitVal = document.getElementById('selectUnit').value;
       
-      const refreshBtn = document.querySelector('.btn-refresh');
-      if (refreshBtn) refreshBtn.textContent = '⏳ 讀取中...';
+      const refreshBtn = document.getElementById('btnManualRefresh') || document.querySelector('.btn-refresh');
+      if (refreshBtn && !isSilent) refreshBtn.textContent = '⏳ 讀取中...';
 
       if (!COURSE_CONFIG.gasEndpoint || COURSE_CONFIG.gasEndpoint === 'YOUR_GAS_EXEC_URL') {
         renderMockDataForPreview();
-        if (refreshBtn) refreshBtn.textContent = '🔄 刷新資料';
+        if (refreshBtn && !isSilent) refreshBtn.textContent = '🔄 立即刷新';
         return;
       }
 
@@ -865,7 +964,10 @@
         const data = await res.json();
 
         if (data.status === 'success') {
-          currentLiveRecords = data.records || [];
+          // 🛡️ 智能處理：身分分組、去重、衝突比對
+          const processed = processClassRecords(data.records || [], classVal);
+          currentSeatDataMap = processed.seatDataMap;
+          currentLiveRecords = processed.cleanList;
           
           if (data.attendance) {
             if (data.attendance.expectedCount) {
@@ -881,52 +983,177 @@
         }
       } catch (err) {
         console.warn('GAS 讀取異常:', err);
+        if (!isSilent) {
+          alert('⚠️ 讀取試算表資料失敗！\n\n請檢查網路連線或 Apps Script 部署權限是否設為「所有人 (Anyone)」。');
+        }
       }
 
-      if (refreshBtn) refreshBtn.textContent = '🔄 刷新資料';
+      if (refreshBtn && !isSilent) refreshBtn.textContent = '🔄 立即刷新';
     }
 
     // 預覽展示假資料（當尚未換上真實 GAS URL 時）
     function renderMockDataForPreview() {
-      currentLiveRecords = [
+      const mockRaw = [
         { studentSeat: "01", studentName: "陳立", score: 100, studentGroup: "第 1 組", timestamp: "剛剛", answers: { q1: "生長激素" } },
         { studentSeat: "05", studentName: "林小真", score: 95, studentGroup: "個人速記", timestamp: "1分鐘前", answers: { q1: "甲狀腺素" } },
+        { studentSeat: "10", studentName: "陳品謙", score: 75, studentGroup: "第 2 組", timestamp: "4分鐘前", answers: {} },
+        { studentSeat: "10", studentName: "陳品謙", score: 85, studentGroup: "第 3 組", timestamp: "剛剛", answers: {} },
         { studentSeat: "12", studentName: "張智凱", score: 90, studentGroup: "第 3 組", timestamp: "3分鐘前", answers: {} }
       ];
       absentSeatsSet = new Set(["03"]);
       document.getElementById('inputAbsentSeats').value = "03";
+      
+      const processed = processClassRecords(mockRaw, document.getElementById('selectClass').value);
+      currentSeatDataMap = processed.seatDataMap;
+      currentLiveRecords = processed.cleanList;
       renderLiveDataToMatrix();
     }
 
-    // 8. 繪製 35 人卡片矩陣
+    // 🛡️ 8. 座號衝突比對與學生身分智能分組引擎 (支援老師憑真實姓名判別同號誤劃)
+    function processClassRecords(records, targetClass) {
+      if (!Array.isArray(records)) return { seatDataMap: new Map(), cleanList: [] };
+
+      // 步驟 1：過濾屬於該班級、座號介於 01~maxSeatNumber 的紀錄
+      const classRecords = records.filter(r => {
+        if (!r || typeof r !== 'object') return false;
+        const cls = String(r.studentClass || '').trim();
+        if (targetClass && cls !== String(targetClass).trim()) return false;
+        const s = parseInt(r.studentSeat, 10);
+        return !isNaN(s) && s >= 1 && s <= COURSE_CONFIG.maxSeatNumber;
+      });
+
+      // 步驟 2：解析時間戳記與內嵌座號
+      const enriched = classRecords.map((r, idx) => {
+        let seat = String(r.studentSeat).padStart(2, '0');
+        try {
+          const parsed = typeof r.answers === 'string' ? JSON.parse(r.answers) : r.answers;
+          if (parsed && parsed.studentSeat) {
+            const innerSeat = parseInt(parsed.studentSeat, 10);
+            if (!isNaN(innerSeat) && innerSeat >= 1 && innerSeat <= COURSE_CONFIG.maxSeatNumber) {
+              seat = String(innerSeat).padStart(2, '0');
+            }
+          }
+        } catch (e) {}
+
+        let timeMs = 0;
+        if (r.timestamp) {
+          timeMs = Date.parse(r.timestamp) || 0;
+          if (timeMs === 0) {
+            const cleaned = String(r.timestamp).replace('上午', 'AM ').replace('下午', 'PM ');
+            timeMs = Date.parse(cleaned) || 0;
+          }
+        }
+
+        return {
+          ...r,
+          studentSeat: seat,
+          studentName: String(r.studentName || '').trim(),
+          _timeMs: timeMs || idx
+        };
+      });
+
+      // 步驟 3：依時間戳記排序 (由舊到新)
+      enriched.sort((a, b) => a._timeMs - b._timeMs);
+
+      // 步驟 4：追蹤每位學生最新選擇的座號 (若同名學生後續改選座號，自動追蹤最新座號)
+      const studentLatestSeat = new Map();
+      enriched.forEach(r => {
+        if (r.studentName) {
+          studentLatestSeat.set(r.studentName, r.studentSeat);
+        }
+      });
+
+      // 步驟 5：初始化座號分組映射 (1 ~ maxSeatNumber)
+      const seatDataMap = new Map();
+      for (let i = 1; i <= COURSE_CONFIG.maxSeatNumber; i++) {
+        const s = String(i).padStart(2, '0');
+        seatDataMap.set(s, {
+          activeRecords: [],
+          historicalRecords: [],
+          isConflict: false,
+          uniqueNames: []
+        });
+      }
+
+      // 步驟 6：將紀錄歸戶至各座號
+      enriched.forEach(r => {
+        const seat = r.studentSeat;
+        if (!seatDataMap.has(seat)) return;
+        const group = seatDataMap.get(seat);
+
+        const currentLatest = studentLatestSeat.get(r.studentName);
+        if (r.studentName && currentLatest && currentLatest !== seat) {
+          // 該生先前曾誤劃此座號，後續已改選至 currentLatest
+          group.historicalRecords.push(r);
+        } else {
+          group.activeRecords.push(r);
+        }
+      });
+
+      // 步驟 7：分析每個座號的衝突與建置最新榜單
+      const cleanList = [];
+      seatDataMap.forEach((group, seatStr) => {
+        // 時間降冪排序 (最新提交在最前)
+        group.activeRecords.sort((a, b) => b._timeMs - a._timeMs);
+        group.historicalRecords.sort((a, b) => b._timeMs - a._timeMs);
+
+        // 收集此座號下所有不重複的活躍學生姓名
+        const namesSet = new Set(group.activeRecords.map(r => r.studentName).filter(Boolean));
+        group.uniqueNames = Array.from(namesSet);
+
+        // 若有 2 位以上「不同姓名」的學生同時占用此座號，判定為【同號衝突】！
+        if (group.uniqueNames.length > 1) {
+          group.isConflict = true;
+        }
+
+        if (group.activeRecords.length > 0) {
+          cleanList.push(group.activeRecords[0]);
+        }
+      });
+
+      return { seatDataMap, cleanList };
+    }
+
+    // 9. 將讀取的資料繪製上 35 人卡片矩陣 (支援同號衝突警示與姓名核對)
     function renderLiveDataToMatrix() {
       renderEmptySeatCards();
-
-      const recordMap = {};
-      currentLiveRecords.forEach(rec => {
-        const seat = String(rec.studentSeat).padStart(2, '0');
-        recordMap[seat] = rec;
-      });
 
       for (let i = 1; i <= COURSE_CONFIG.maxSeatNumber; i++) {
         const seatStr = i < 10 ? '0' + i : '' + i;
         const card = document.getElementById('seat_card_' + seatStr);
         if (!card) continue;
 
+        const group = currentSeatDataMap.get(seatStr) || { activeRecords: [], historicalRecords: [], isConflict: false, uniqueNames: [] };
+
         if (absentSeatsSet.has(seatStr)) {
+          // 狀態 1：請假狀態
           card.className = 'seat-card absent';
           card.querySelector('.seat-name').textContent = '請假';
           card.querySelector('.seat-status-text').textContent = '🏖️ 今日請假';
-        } else if (recordMap[seatStr]) {
-          const rec = recordMap[seatStr];
+        } else if (group.isConflict) {
+          // 狀態 2：⚠️ 同號衝突！(有 2 位以上不同學生誤劃此座號)
+          card.className = 'seat-card conflict';
+          card.querySelector('.seat-name').innerHTML = `⚠️ ${group.uniqueNames.join(' / ')}`;
+          card.querySelector('.seat-status-text').innerHTML = `
+            <span class="seat-conflict-badge">⚠️ 衝突 (${group.activeRecords.length}人)</span>
+            <div style="font-size: 0.72rem; color: #b45309; margin-top: 2px; font-weight: 700;">點擊核對身分 🔍</div>
+          `;
+          card.onclick = () => showConflictDetailModal(seatStr, group);
+        } else if (group.activeRecords.length > 0) {
+          // 狀態 3：正常已繳交狀態 (包含同一人多次提交)
+          const rec = group.activeRecords[0]; // 取該生最新一次作答
+          const subCount = group.activeRecords.length;
           card.className = 'seat-card submitted';
           card.querySelector('.seat-name').textContent = rec.studentName || '已交';
           card.querySelector('.seat-status-text').innerHTML = `
             <span class="seat-score-badge">${rec.score || 100} 分</span>
-            <div style="font-size: 0.72rem; color: #059669; margin-top: 2px;">已完成 ✅</div>
+            <div style="font-size: 0.72rem; color: #059669; margin-top: 2px;">
+              ${subCount > 1 ? `已交 (${subCount}次) ✅` : '已完成 ✅'}
+            </div>
           `;
-          card.onclick = () => showStudentDetailModal(rec);
+          card.onclick = () => showStudentDetailModal(rec, group);
         } else {
+          // 狀態 4：未繳交
           card.className = 'seat-card missing';
           card.querySelector('.seat-name').textContent = '未交';
           card.querySelector('.seat-status-text').textContent = '作答中 💪';
@@ -937,7 +1164,7 @@
       renderLeaderboard();
     }
 
-    // 9. 更新頂部參與率進度條
+    // 10. 更新頂部參與率進度條
     function updateDashboardStats() {
       const expectedTotal = parseInt(document.getElementById('inputExpectedCount').value) || 30;
       const absentCount = absentSeatsSet.size;
@@ -948,11 +1175,15 @@
       document.getElementById('submittedCount').textContent = submittedCount;
 
       const rate = Math.min(100, Math.round((submittedCount / actualExpected) * 100));
-      document.getElementById('ratePercent').textContent = rate + '%';
+      if (rate >= 100 && submittedCount >= actualExpected && actualExpected > 0) {
+        document.getElementById('ratePercent').innerHTML = `100% <span style="font-size: 0.82rem; background: #10B981; color: white; padding: 2px 8px; border-radius: 6px; margin-left: 4px; font-weight: 800;">🎉 全班到齊全數繳交！</span>`;
+      } else {
+        document.getElementById('ratePercent').textContent = rate + '%';
+      }
       document.getElementById('progressBarFill').style.width = rate + '%';
     }
 
-    // 10. 點擊座號卡切換請假
+    // 11. 點擊座號卡切換請假
     function handleSeatCardClick(seatStr) {
       if (absentSeatsSet.has(seatStr)) {
         absentSeatsSet.delete(seatStr);
@@ -963,7 +1194,7 @@
       renderLiveDataToMatrix();
     }
 
-    // 11. 手動輸入請假座號
+    // 12. 手動輸入請假座號
     function handleAbsentInputChange() {
       const raw = document.getElementById('inputAbsentSeats').value;
       const parts = raw.split(/[,\s]+/).map(s => s.trim().padStart(2, '0')).filter(s => s && s !== '00');
@@ -971,7 +1202,7 @@
       renderLiveDataToMatrix();
     }
 
-    // 12. 儲存出缺席至 Google 試算表
+    // 13. 儲存出缺席至 Google 試算表
     async function syncAttendanceToGoogleSheet() {
       const classVal = document.getElementById('selectClass').value;
       const unitVal = document.getElementById('selectUnit').value;
@@ -1016,7 +1247,7 @@
       btn.disabled = false;
     }
 
-    // 13. 一鍵複製未交名單
+    // 14. 一鍵複製未交名單 (含同號衝突備註)
     function copyMissingListToClipboard() {
       const classVal = document.getElementById('selectClass').value;
       const unitVal = document.getElementById('selectUnit').value;
@@ -1032,18 +1263,30 @@
         }
       }
 
+      // 檢查是否有尚未裁決的同號衝突
+      const conflictList = [];
+      currentSeatDataMap.forEach((group, seatStr) => {
+        if (group.isConflict) {
+          conflictList.push(`${seatStr} 號 (${group.uniqueNames.join(' / ')})`);
+        }
+      });
+
       const absentList = Array.from(absentSeatsSet).map(s => s + '號').join(', ') || '無';
       const missingListStr = missingSeats.length > 0 ? missingSeats.join(', ') : '全數繳交完畢 🎉';
 
-      const copyText = `📢 ${classVal} 班【國中生物】單元 ${unitVal} 學習單繳交通報
+      let copyText = `📢 ${classVal} 班【國中生物】單元 ${unitVal} 學習單繳交通報
 • 實到應交：${actualExpected} 人 / 已交：${submittedSeats.size} 人
 • 今日請假：${absentList}
 • 尚未繳交座號：${missingListStr}`;
 
+      if (conflictList.length > 0) {
+        copyText += `\n• ⚠️ 誤劃同號待確認：${conflictList.join('、')}`;
+      }
+
       copyToClipboard(copyText, event.target);
     }
 
-    // 14. 繪製英雄榜 Top 5
+    // 15. 繪製英雄榜 Top 5
     function renderLeaderboard() {
       const container = document.getElementById('leaderboardList');
       if (currentLiveRecords.length === 0) {
@@ -1067,7 +1310,7 @@
       `).join('');
     }
 
-    // 15. 手動補登成績
+    // 16. 手動補登成績
     function openManualGradeModal() {
       document.getElementById('manualGradeModal').classList.add('active');
     }
@@ -1106,14 +1349,14 @@
         });
         alert(`✅ 已為 ${classVal} 班 ${seat} 號 ${name} 補登成績，並同步覆蓋試算表！`);
         closeManualGradeModal();
-        fetchLiveDataFromGAS();
+        fetchLiveDataFromGAS(false);
       } catch (e) {
         alert('補登完成！');
       }
     }
 
-    // 16. 檢視學生作答彈窗
-    function showStudentDetailModal(rec) {
+    // 17. 檢視學生作答彈窗 (支援多次提交歷史紀錄展示)
+    function showStudentDetailModal(rec, group) {
       document.getElementById('modalDetailTitle').textContent = `${rec.studentClass} 班 ${rec.studentSeat} 號 ${rec.studentName} 同學作答詳情`;
       
       let answersHtml = '';
@@ -1129,7 +1372,23 @@
         answersHtml = '<div>原始作答：' + (rec.answers || '無') + '</div>';
       }
 
+      // 若該生有多次提交歷史，展示提交時間軸
+      let historyHtml = '';
+      if (group && group.activeRecords && group.activeRecords.length > 1) {
+        historyHtml = `
+          <div style="background: #F0FDF4; border: 1px solid #86EFAC; border-radius: 8px; padding: 0.6rem 0.8rem; margin-bottom: 0.8rem;">
+            <div style="font-weight: 800; color: #166534; font-size: 0.88rem; margin-bottom: 0.3rem;">📜 本座號歷次提交紀錄 (共 ${group.activeRecords.length} 次，系統展示最新一次)：</div>
+            ${group.activeRecords.map((r, idx) => `
+              <div style="font-size: 0.82rem; color: #15803D; padding: 2px 0;">
+                • 第 ${group.activeRecords.length - idx} 次：${r.timestamp || '時間未知'} ｜ 得分：<b>${r.score}分</b> (${r.studentGroup || '個人'})
+              </div>
+            `).join('')}
+          </div>
+        `;
+      }
+
       document.getElementById('modalDetailBody').innerHTML = `
+        ${historyHtml}
         <div style="margin-bottom: 0.8rem; font-weight: 700; color: #10b981;">
           🎯 初評得分：${rec.score} 分 ｜ 繳交時間：${rec.timestamp || '無'}
         </div>
@@ -1143,7 +1402,164 @@
       document.getElementById('studentDetailModal').classList.add('active');
     }
 
-    // 17. 匯出 CSV
+    // 18. ⚠️ 同號衝突一鍵裁決彈窗 (方案 B：支援教師免開試算表、一鍵轉移座號即時歸位)
+    function showConflictDetailModal(seatStr, group) {
+      const classVal = document.getElementById('selectClass').value;
+      document.getElementById('modalDetailTitle').innerHTML = `⚠️ <span style="color: #DC2626;">${classVal} 班 ${seatStr} 號 【同號衝突一鍵裁決】</span> (共 ${group.activeRecords.length} 位不同學生)`;
+
+      const studentsHtml = group.activeRecords.map((r, idx) => {
+        let ansPreview = '';
+        try {
+          const ans = typeof r.answers === 'string' ? JSON.parse(r.answers) : r.answers;
+          ansPreview = Object.keys(ans).slice(0, 3).map(k => `<b>[${k}]</b> ${Array.isArray(ans[k]) ? ans[k].join(', ') : ans[k]}`).join(' ； ');
+        } catch(e) {
+          ansPreview = String(r.answers);
+        }
+
+        const safeName = (r.studentName || '').replace(/'/g, "\\'");
+
+        return `
+          <div style="border: 2px solid ${idx === 0 ? '#F59E0B' : '#CBD5E1'}; border-radius: 12px; padding: 0.9rem 1rem; margin-bottom: 0.9rem; background: #FFFFFF; box-shadow: 0 1px 4px rgba(0,0,0,0.05);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.4rem;">
+              <span style="font-size: 1.18rem; font-weight: 800; color: #1E293B;">👤 學生姓名：<span style="color: #0284C7;">${r.studentName || '(未填姓名)'}</span></span>
+              <span style="font-weight: 800; color: #10B981; font-size: 1.1rem; background: #ECFDF5; padding: 0.2rem 0.6rem; border-radius: 6px;">${r.score} 分</span>
+            </div>
+            <div style="font-size: 0.85rem; color: #64748B; margin-bottom: 0.45rem;">
+              ⏰ 提交時間：${r.timestamp || '無'} | 🏷️ 組別：${r.studentGroup}
+            </div>
+            <div style="font-size: 0.85rem; color: #475569; background: #F8FAFC; padding: 0.45rem 0.6rem; border-radius: 6px; border: 1px dashed #CBD5E1; margin-bottom: 0.7rem;">
+              💡 作答摘要：${ansPreview || '無作答內容'}
+            </div>
+            <div style="display: flex; gap: 0.6rem; justify-content: flex-end; border-top: 1px dashed #E2E8F0; padding-top: 0.6rem;">
+              <button type="button" class="btn-action-primary" style="padding: 0.4rem 0.9rem; font-size: 0.88rem; font-weight: 700; border-radius: 6px; cursor: pointer;" onclick="confirmSeatOwner('${seatStr}', '${safeName}')">
+                👑 確認為 ${seatStr} 號
+              </button>
+              <button type="button" style="padding: 0.4rem 0.9rem; font-size: 0.88rem; font-weight: 700; border-radius: 6px; cursor: pointer; background: #0284C7; color: white; border: none;" onclick="promptReassignSeat('${seatStr}', '${safeName}')">
+                🔄 改移至正確座號
+              </button>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      document.getElementById('modalDetailBody').innerHTML = `
+        <div style="background: #FFFBEB; border: 1px solid #FCD34D; border-radius: 8px; padding: 0.75rem 0.9rem; margin-bottom: 1rem; color: #92400E; font-size: 0.9rem; line-height: 1.6;">
+          📢 <strong>教師一鍵裁決指引 (免開試算表)</strong>：兩位同學皆填寫了此座號。<br>
+          • 點擊 <strong>「👑 確認為 ${seatStr} 號」</strong>：確認該生為本座號主人，並可一鍵移位另一位同學。<br>
+          • 點擊 <strong>「🔄 改移至正確座號」</strong>：直接將誤劃同學轉移至其真實座號，<strong>系統自動同步試算表！</strong>
+        </div>
+        ${studentsHtml}
+      `;
+
+      document.getElementById('studentDetailModal').classList.add('active');
+    }
+
+    // 19. 教師裁決：確認某生為本號主人，並引導移位另一位誤劃學生
+    function confirmSeatOwner(seatStr, confirmedName) {
+      const group = currentSeatDataMap.get(seatStr);
+      if (!group || !group.activeRecords) return;
+
+      const otherRec = group.activeRecords.find(r => r.studentName !== confirmedName);
+      if (otherRec) {
+        const input = prompt(
+          `✅ 已確認【${confirmedName}】為本班 ${seatStr} 號！\n\n請問另一位誤劃的同學「${otherRec.studentName}」真實座號是幾號？\n\n（請輸入 01~35 正確座號，系統將自動為其移位歸戶並同步試算表；若留空確認則暫維持原狀）：`
+        );
+        if (input !== null && input.trim()) {
+          const sNum = parseInt(input.trim(), 10);
+          if (!isNaN(sNum) && sNum >= 1 && sNum <= COURSE_CONFIG.maxSeatNumber) {
+            const newSeat = String(sNum).padStart(2, '0');
+            executeReassignSeat(otherRec.studentName, seatStr, newSeat);
+          } else {
+            alert('座號請輸入 01 到 35 之間的數字！');
+          }
+        } else {
+          document.getElementById('studentDetailModal').classList.remove('active');
+        }
+      } else {
+        alert(`已確認【${confirmedName}】為本號同學！`);
+        document.getElementById('studentDetailModal').classList.remove('active');
+      }
+    }
+
+    // 20. 教師裁決：彈出輸入新座號對話框
+    function promptReassignSeat(currentSeat, studentName) {
+      const input = prompt(
+        `【🔄 一鍵轉移座號】\n\n請輸入學生「${studentName}」的真實座號 (01~35)：\n\n💡 提示：系統將立即將該生移至新座號，並自動同步試算表，您無須登入 Google 雲端！`
+      );
+
+      if (input !== null && input.trim()) {
+        const sNum = parseInt(input.trim(), 10);
+        if (isNaN(sNum) || sNum < 1 || sNum > COURSE_CONFIG.maxSeatNumber) {
+          alert('座號請輸入 01 到 35 之間的數字！');
+          return;
+        }
+        const newSeat = String(sNum).padStart(2, '0');
+        executeReassignSeat(studentName, currentSeat, newSeat);
+      }
+    }
+
+    // 21. 執行座號轉移與試算表雙向同步
+    async function executeReassignSeat(studentName, oldSeat, newSeat) {
+      const classVal = document.getElementById('selectClass').value;
+      const unitVal = document.getElementById('selectUnit').value;
+
+      // 步驟 1：本機樂觀更新 (Optimistic UI Update) - 立即見效零等待
+      if (Array.isArray(currentLiveRecords)) {
+        currentLiveRecords.forEach(r => {
+          if (String(r.studentName).trim() === String(studentName).trim()) {
+            r.studentSeat = newSeat;
+            try {
+              if (typeof r.answers === 'string') {
+                const parsed = JSON.parse(r.answers);
+                parsed.studentSeat = newSeat;
+                r.answers = JSON.stringify(parsed);
+              } else if (r.answers && typeof r.answers === 'object') {
+                r.answers.studentSeat = newSeat;
+              }
+            } catch (e) {}
+          }
+        });
+      }
+
+      // 重新計算衝突分組與渲染畫面
+      const processed = processClassRecords(currentLiveRecords, classVal);
+      currentSeatDataMap = processed.seatDataMap;
+      currentLiveRecords = processed.cleanList;
+      renderLiveDataToMatrix();
+
+      // 關閉彈窗
+      document.getElementById('studentDetailModal').classList.remove('active');
+
+      // 步驟 2：背景非同步通知 Google Apps Script 更新試算表
+      const payload = {
+        action: 'reassignSeat',
+        sheetId: unitVal,
+        studentClass: classVal,
+        studentName: studentName,
+        oldSeat: oldSeat,
+        newSeat: newSeat
+      };
+
+      try {
+        await fetch(COURSE_CONFIG.gasEndpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+          mode: 'no-cors'
+        });
+        alert(`🎉 轉移成功！\n\n已成功將「${studentName}」轉移至 ${newSeat} 號，並已向 Google 試算表發出更新！`);
+      } catch (err) {
+        console.error('Reassign seat sync error:', err);
+        alert(`已於儀表板完成座號轉移！若試算表未及時更新，可於課後透過試算表選單【🧬 生物學習單工具】一鍵整理。`);
+      }
+
+      // 3 秒後靜默重新從 GAS 抓取最新資料確認
+      setTimeout(() => {
+        fetchLiveDataFromGAS(true);
+      }, 2500);
+    }
+
+    // 22. 匯出 CSV
     function exportCsv() {
       const classVal = document.getElementById('selectClass').value;
       const unitVal = document.getElementById('selectUnit').value;

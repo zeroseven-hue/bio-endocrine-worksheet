@@ -20,6 +20,20 @@ let autoSaveTimer = null;
 
 // ==================== 1. 初始化班級座號與事件掛載 ====================
 document.addEventListener("DOMContentLoaded", () => {
+  // 4.5 檢查 URL 是否帶有重置指令 (?reset=1)
+  const urlParams = new URLSearchParams(window.location.search);
+  if (urlParams.get('reset') === '1' || urlParams.get('fresh') === '1') {
+    localStorage.removeItem(STORAGE_KEY_INDIV);
+    localStorage.removeItem(STORAGE_KEY_GROUP);
+    localStorage.removeItem(STORAGE_KEY_SUBMIT_INDIV);
+    localStorage.removeItem(STORAGE_KEY_SUBMIT_GROUP);
+    localStorage.removeItem('BIO_4_2_LAST_TIMESTAMP');
+    window.history.replaceState({}, document.title, window.location.pathname);
+  }
+
+  // 4.8 課堂超時 40 分鐘自動清空判定 (專為 10 分鐘推車換班設計)
+  checkBioSessionTimeout();
+
   initDropdowns();
   bindModeSwitching();
   bindStepperEvents();
@@ -29,6 +43,7 @@ document.addEventListener("DOMContentLoaded", () => {
   updateStepperCheckmarks();
   updateGlandNodeStatus();
   initExitGuard();
+  checkBioStudentIdentityAndStatus();
 
   // 若記憶為小組模式，自動恢復上次開啟的任務子分頁
   const savedGroupTab = localStorage.getItem("BIO_ACTIVE_GROUP_TAB");
@@ -437,6 +452,22 @@ function updateGlandNodeStatus() {
 
 // ==================== 5. 輸入監聽與 localStorage 本地自動暫存 ====================
 function bindInputListeners() {
+  const stdClsEl = document.getElementById("studentClass");
+  if (stdClsEl) {
+    stdClsEl.addEventListener("change", () => {
+      const savedIndiv = localStorage.getItem(STORAGE_KEY_INDIV);
+      if (savedIndiv) {
+        try {
+          const d = JSON.parse(savedIndiv);
+          if (d.class && d.class !== stdClsEl.value) {
+            if (confirm("⚠️ 系統偵測到班級已切換為【" + stdClsEl.value + " 班】！\n\n是否清空上一班（" + d.class + " 班）的座號姓名與作答紀錄，開始全新作答？")) {
+              startFreshBioQuiz(true);
+            }
+          }
+        } catch(e) {}
+      }
+    });
+  }
   // 所有 input / select / textarea 變更皆觸發微緩衝暫存
   document.addEventListener("input", (e) => {
     if (e.target.matches("input, select, textarea")) {
@@ -461,6 +492,13 @@ function bindInputListeners() {
       document.getElementById("resultModal").classList.add("hidden");
       // 重置頁面回到頂端
       window.scrollTo({ top: 0, behavior: "smooth" });
+    });
+  }
+
+  const btnModalFresh = document.getElementById("btnModalFreshStudent");
+  if (btnModalFresh) {
+    btnModalFresh.addEventListener("click", () => {
+      startFreshBioQuiz();
     });
   }
 }
@@ -505,6 +543,7 @@ function saveCurrentData() {
     q7_literacy_essay: document.getElementById("q7_literacy_essay").value
   };
   localStorage.setItem(STORAGE_KEY_INDIV, JSON.stringify(indivPayload));
+  localStorage.setItem('BIO_4_2_LAST_TIMESTAMP', String(Date.now()));
 
   // 2. 小組資料
   const groupPayload = {
@@ -950,6 +989,11 @@ function handleSubmitIndividual() {
 
   score = Math.min(100, score);
 
+  // 雙重確認身分彈窗防呆
+  if (!confirm("📋【學習單送出身分核對】\n\n請確認您的身分：\n" + cls + " 班 " + seat + " 號 " + name + "\n初評得分：" + score + " 分\n\n⚠️ 送出後成績將直接登錄至老師試算表！確定要現在送出嗎？")) {
+    return;
+  }
+
   // 打包 Payload 送出
   const payload = {
     sheetId: "4-2",
@@ -1120,6 +1164,10 @@ function handleSubmitGroup() {
 
   score = Math.min(100, score);
 
+  if (!confirm("📋【小組學習單送出核對】\n\n請確認：\n" + cls + " 班 第 " + groupNum + " 組\n出席組員：" + members.join("、") + "\n初評得分：" + score + " 分\n\n確定正式提交小組學習單嗎？")) {
+    return;
+  }
+
   const payload = {
     sheetId: "4-2",
     mode: "group",
@@ -1238,4 +1286,87 @@ function showToast(msg) {
   setTimeout(() => {
     toast.classList.remove("show");
   }, 2200);
+}
+
+// ==================== 8. 跑班推車防呆核心函式 (超時/門禁/換人清空) ====================
+function checkBioSessionTimeout() {
+  const lastTimeRaw = localStorage.getItem('BIO_4_2_LAST_TIMESTAMP');
+  if (!lastTimeRaw) return;
+  const lastTime = parseInt(lastTimeRaw, 10);
+  const diffMinutes = (Date.now() - lastTime) / (1000 * 60);
+  if (diffMinutes > 40) {
+    console.log('[Bio Session Guard] 距離上次填寫超過 40 分鐘，自動清空上一班暫存');
+    localStorage.removeItem(STORAGE_KEY_INDIV);
+    localStorage.removeItem(STORAGE_KEY_GROUP);
+    localStorage.removeItem(STORAGE_KEY_SUBMIT_INDIV);
+    localStorage.removeItem(STORAGE_KEY_SUBMIT_GROUP);
+    localStorage.removeItem('BIO_4_2_LAST_TIMESTAMP');
+  }
+}
+
+function checkBioStudentIdentityAndStatus() {
+  const indivRaw = localStorage.getItem(STORAGE_KEY_INDIV);
+  const submittedRaw = localStorage.getItem(STORAGE_KEY_SUBMIT_INDIV);
+  
+  if (submittedRaw) {
+    try {
+      const sub = JSON.parse(submittedRaw);
+      showBioIdentityModal(sub.target || '先前同學', true);
+      return;
+    } catch(e) {}
+  }
+
+  if (indivRaw) {
+    try {
+      const d = JSON.parse(indivRaw);
+      if (d.class && d.seat && d.name) {
+        showBioIdentityModal(d.class + ' 班 ' + d.seat + ' 號 ' + d.name, false);
+      }
+    } catch(e) {}
+  }
+}
+
+function showBioIdentityModal(studentDesc, isSubmitted) {
+  let modal = document.getElementById('bioIdentityModal');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'bioIdentityModal';
+    modal.style.cssText = 'position:fixed;inset:0;background:rgba(15,23,42,0.85);backdrop-filter:blur(6px);z-index:9999;display:flex;align-items:center;justify-content:center;padding:1.2rem;';
+    document.body.appendChild(modal);
+  }
+
+  modal.innerHTML = `
+    <div style="background:#fff;border-radius:24px;max-width:500px;width:100%;padding:2rem;text-align:center;box-shadow:0 25px 50px -12px rgba(0,0,0,0.3);border-top:6px solid #0284c7;">
+      <div style="font-size:3rem;margin-bottom:0.4rem;">👋</div>
+      <h2 style="font-size:1.4rem;font-weight:900;color:#0f172a;margin-bottom:0.3rem;">請確認作答身分</h2>
+      <p style="color:#64748b;font-size:0.95rem;margin-bottom:1.2rem;">本平板留存上一位同學的作答紀錄：</p>
+      
+      <div style="background:#f0f9ff;border:2px dashed #38bdf8;border-radius:14px;padding:1.1rem;margin-bottom:1.5rem;">
+        <span style="font-size:1.3rem;font-weight:900;color:#0369a1;">${studentDesc}</span>
+        <div style="font-size:0.85rem;color:#0284c7;margin-top:0.3rem;">
+          ${isSubmitted ? '✅ 該生已成功完成交卷' : '📝 該生尚有填寫中之草稿'}
+        </div>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:0.75rem;">
+        <button type="button" onclick="document.getElementById('bioIdentityModal').remove()" style="padding:0.85rem;background:#0284c7;color:#fff;font-weight:800;border:none;border-radius:12px;font-size:1rem;cursor:pointer;">
+          🙋‍♂️ 我就是該位同學（繼續作答/檢視）
+        </button>
+        <button type="button" onclick="startFreshBioQuiz(true)" style="padding:0.85rem;background:#fee2e2;color:#dc2626;font-weight:800;border:1.5px solid #fca5a5;border-radius:12px;font-size:0.95rem;cursor:pointer;">
+          🔄 不是我，我是新同學（清空上一位，開始全新作答）
+        </button>
+      </div>
+    </div>
+  `;
+}
+
+function startFreshBioQuiz(skipConfirm) {
+  if (skipConfirm || confirm("確定要開始全新作答嗎？\n\n（這將清空此平板畫面上留存的上一位座號與答案，前一位同學已送出的成績不受影響）")) {
+    localStorage.removeItem(STORAGE_KEY_INDIV);
+    localStorage.removeItem(STORAGE_KEY_GROUP);
+    localStorage.removeItem(STORAGE_KEY_SUBMIT_INDIV);
+    localStorage.removeItem(STORAGE_KEY_SUBMIT_GROUP);
+    localStorage.removeItem('BIO_4_2_LAST_TIMESTAMP');
+    location.reload();
+  }
 }
