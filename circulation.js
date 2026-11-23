@@ -530,7 +530,7 @@ function handleSubmit() {
 
   // 標記已交卷
   localStorage.setItem(STORAGE_KEY_SUBMITTED, JSON.stringify({
-    score: score,
+    score: totalScore,
     timestamp: Date.now()
   }));
 
@@ -550,7 +550,15 @@ function submitToGasBackend(data, totalScore, task1To6Score, mcqScore) {
     studentSeat: data.sSeat,
     studentName: data.sName,
     seatOrGroup: data.sSeat + " 號",
+    studentGroup: "個人學習單",
     score: totalScore,
+    scoreBreakdown: `任務一~六: ${task1To6Score}分 / 選擇: ${mcqScore}分`,
+    answers: {
+      totalScore: totalScore,
+      task1To6Score: task1To6Score,
+      mcqScore: mcqScore,
+      formData: data
+    },
     details: JSON.stringify({
       totalScore: totalScore,
       task1To6Score: task1To6Score,
