@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>國中生物 數位學習單 即時繳交儀表板</title>
-  <link rel="stylesheet" href="assets/css/hub.css?v=4.0">
+  <link rel="stylesheet" href="assets/css/hub.css?v=4.5">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&family=JetBrains+Mono:wght@600;800&family=Orbitron:wght@700&display=swap" rel="stylesheet">
@@ -664,7 +664,7 @@
         <!-- 應到人數 -->
         <div style="display: flex; align-items: center; gap: 0.3rem; background: rgba(255,255,255,0.18); padding: 0.4rem 0.7rem; border-radius: 8px;">
           <span style="font-size: 0.88rem; font-weight: 700;">應到:</span>
-          <input type="number" id="inputExpectedCount" value="30" min="1" max="35" style="width: 50px; font-weight: 800; padding: 0.2rem; border-radius: 4px; border: none; text-align: center;" onchange="updateDashboardStats()">
+          <input type="number" id="inputExpectedCount" value="30" min="1" max="35" style="width: 50px; font-weight: 800; padding: 0.2rem; border-radius: 4px; border: none; text-align: center;" oninput="handleExpectedCountChange()" onchange="handleExpectedCountChange()">
           <span style="font-size: 0.88rem;">人</span>
         </div>
 
@@ -717,7 +717,7 @@
       <div class="action-subbar">
         <div class="absent-input-group">
           <label style="font-weight: 800; font-size: 0.92rem; white-space: nowrap;">🏖️ 今日請假座號：</label>
-          <input type="text" id="inputAbsentSeats" class="form-control" style="font-size: 0.9rem; padding: 6px 12px;" placeholder="輸入座號(如 03, 14)，或直接點擊下方座號卡" onchange="handleAbsentInputChange()">
+          <input type="text" id="inputAbsentSeats" class="form-control" style="font-size: 0.9rem; padding: 6px 12px;" placeholder="輸入座號(如 03, 14)，或直接點擊下方座號卡" oninput="handleAbsentInputChange()" onchange="handleAbsentInputChange()">
         </div>
 
         <div class="tool-btn-group">
@@ -807,7 +807,7 @@
   </div>
 
   <!-- 引入共用設定與工具函式 (附帶版本號強制作廢舊快取) -->
-  <script src="assets/js/common.js?v=2.1"></script>
+  <script src="assets/js/common.js?v=4.5"></script>
   <script>
     // ⏱️ 5 秒自動同步計時器全域常數與狀態
     const AUTO_REFRESH_INTERVAL_SECONDS = 5;
@@ -818,6 +818,7 @@
     let currentLiveRecords = [];
     let currentSeatDataMap = new Map();
     let absentSeatsSet = new Set();
+    let localAttendanceCache = new Map(); // 班級出缺席與應到人數本地記憶防洗掉
     let isScoreHidden = false;
 
     // 1. 初始化
@@ -969,14 +970,27 @@
           currentSeatDataMap = processed.seatDataMap;
           currentLiveRecords = processed.cleanList;
           
-          if (data.attendance) {
+          // 🛡️ 出缺席與人數狀態保全：若老師在本機編輯過尚未儲存，輪詢絕不覆蓋洗掉
+          const currentClassKey = `${classVal}_${unitVal}`;
+          const localSaved = localAttendanceCache.get(currentClassKey);
+          if (localSaved) {
+            // 優先保持老師剛剛修改的應到人數與請假名單
+            document.getElementById('inputExpectedCount').value = localSaved.expectedCount;
+            absentSeatsSet = new Set(localSaved.absentSeats);
+            document.getElementById('inputAbsentSeats').value = Array.from(absentSeatsSet).join(', ');
+          } else if (data.attendance) {
             if (data.attendance.expectedCount) {
               document.getElementById('inputExpectedCount').value = data.attendance.expectedCount;
             }
             if (Array.isArray(data.attendance.absentSeats)) {
-              absentSeatsSet = new Set(data.attendance.absentSeats);
+              absentSeatsSet = new Set(data.attendance.absentSeats.map(s => String(s).padStart(2, '0')));
               document.getElementById('inputAbsentSeats').value = Array.from(absentSeatsSet).join(', ');
             }
+            // 存入快取
+            localAttendanceCache.set(currentClassKey, {
+              expectedCount: parseInt(document.getElementById('inputExpectedCount').value) || 30,
+              absentSeats: Array.from(absentSeatsSet)
+            });
           }
 
           renderLiveDataToMatrix();
@@ -1183,22 +1197,59 @@
       document.getElementById('progressBarFill').style.width = rate + '%';
     }
 
-    // 11. 點擊座號卡切換請假
+    // 10.1 處理應到人數修改
+    function handleExpectedCountChange() {
+      const classVal = document.getElementById('selectClass').value;
+      const unitVal = document.getElementById('selectUnit').value;
+      const count = parseInt(document.getElementById('inputExpectedCount').value) || 30;
+      const key = `${classVal}_${unitVal}`;
+      
+      const current = localAttendanceCache.get(key) || { absentSeats: Array.from(absentSeatsSet), expectedCount: 30 };
+      current.expectedCount = count;
+      localAttendanceCache.set(key, current);
+      
+      updateDashboardStats();
+    }
+
+    // 11. 點擊座號卡切換請假 (即時記憶，5秒自動輪詢絕不掉回)
     function handleSeatCardClick(seatStr) {
+      const classVal = document.getElementById('selectClass').value;
+      const unitVal = document.getElementById('selectUnit').value;
+      const key = `${classVal}_${unitVal}`;
+
       if (absentSeatsSet.has(seatStr)) {
         absentSeatsSet.delete(seatStr);
       } else {
         absentSeatsSet.add(seatStr);
       }
       document.getElementById('inputAbsentSeats').value = Array.from(absentSeatsSet).join(', ');
+      
+      // 寫入本地記憶快取，防止5秒自動同步洗掉
+      const count = parseInt(document.getElementById('inputExpectedCount').value) || 30;
+      localAttendanceCache.set(key, {
+        expectedCount: count,
+        absentSeats: Array.from(absentSeatsSet)
+      });
+
       renderLiveDataToMatrix();
     }
 
     // 12. 手動輸入請假座號
     function handleAbsentInputChange() {
+      const classVal = document.getElementById('selectClass').value;
+      const unitVal = document.getElementById('selectUnit').value;
+      const key = `${classVal}_${unitVal}`;
+
       const raw = document.getElementById('inputAbsentSeats').value;
       const parts = raw.split(/[,\s]+/).map(s => s.trim().padStart(2, '0')).filter(s => s && s !== '00');
       absentSeatsSet = new Set(parts);
+      
+      const count = parseInt(document.getElementById('inputExpectedCount').value) || 30;
+      localAttendanceCache.set(key, {
+        expectedCount: count,
+        absentSeats: Array.from(absentSeatsSet)
+      });
+
       renderLiveDataToMatrix();
     }
 
@@ -1237,6 +1288,11 @@
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload),
           mode: 'no-cors'
+        });
+        const key = `${classVal}_${unitVal}`;
+        localAttendanceCache.set(key, {
+          expectedCount: expectedTotal,
+          absentSeats: Array.from(absentSeatsSet)
         });
         alert(`🎉 ${classVal} 班【單元 ${unitVal}】出缺席紀錄已成功儲存至試算表【出缺席紀錄】分頁！`);
       } catch (e) {
