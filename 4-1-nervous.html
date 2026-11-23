@@ -1379,7 +1379,7 @@
   <div class="cyber-toast" id="cyberToast"></div>
 
   <!-- 引入主腳本 (附帶版本號強制作廢舊快取) -->
-<script src="nervous.js?v=4.0"></script>
+<script src="nervous.js?v=4.8"></script>
 
 <!-- 🔒 教師安全防護 PIN 密碼解鎖 Modal -->
 <div id="pinLockModal" class="pin-modal-overlay">
@@ -1396,5 +1396,34 @@
 
 <script>
 //
+
+  <!-- 🛡️ 交卷前【身分再次核對】防呆確認 Modal -->
+  <div id="identityConfirmModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(15,23,42,0.85); backdrop-filter:blur(8px); z-index:99999; justify-content:center; align-items:center;">
+    <div style="background:#ffffff; border-radius:20px; max-width:440px; width:90%; padding:2rem; box-shadow:0 20px 40px rgba(0,0,0,0.3); text-align:center; border:2px solid #3b82f6;">
+      <div style="font-size:3rem; margin-bottom:0.5rem;">📋</div>
+      <h3 style="font-size:1.4rem; font-weight:900; color:#0f172a; margin-bottom:0.4rem;">請再次確認您的身分資訊</h3>
+      <p style="font-size:0.92rem; color:#64748b; margin-bottom:1.4rem;">為維護成績與座號公平性，請務必核對是否為您本人的班級座號：</p>
+      
+      <div style="background:#f0f9ff; border:1.5px solid #bae6fd; border-radius:14px; padding:1.2rem; margin-bottom:1.5rem; text-align:left;">
+        <div style="font-size:1.15rem; font-weight:800; color:#0369a1; margin-bottom:0.4rem; display:flex; justify-content:space-between;">
+          <span>班級：<span id="confirmClassDisplay" style="color:#0284c7;">-</span></span>
+          <span>座號：<span id="confirmSeatDisplay" style="color:#0284c7;">-</span> 號</span>
+        </div>
+        <div style="font-size:1.15rem; font-weight:800; color:#0369a1;">
+          學生姓名：<span id="confirmNameDisplay" style="color:#0f172a;">-</span>
+        </div>
+      </div>
+
+      <div style="display:flex; gap:0.8rem; justify-content:center;">
+        <button type="button" id="btnConfirmModify" style="flex:1; padding:0.75rem; border-radius:10px; border:1.5px solid #cbd5e1; background:#ffffff; color:#475569; font-weight:700; font-size:1rem; cursor:pointer;">
+          ✏️ 填錯了，去修正
+        </button>
+        <button type="button" id="btnConfirmSubmit" style="flex:1.2; padding:0.75rem; border-radius:10px; border:none; background:linear-gradient(135deg, #0284c7, #0369a1); color:#ffffff; font-weight:800; font-size:1rem; cursor:pointer; box-shadow:0 4px 12px rgba(2,132,199,0.3);">
+          ✅ 確認無誤，正式交卷
+        </button>
+      </div>
+    </div>
+  </div>
+
 </body>
 </html>

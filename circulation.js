@@ -462,7 +462,7 @@ function startFreshQuiz(isNewStudent) {
   }
 }
 
-// 交卷計算分數
+// 交卷計算分數 (含身分再次確認防呆)
 function handleSubmit() {
   const data = getFormData();
 
@@ -486,6 +486,31 @@ function handleSubmit() {
     return;
   }
 
+  // 🛡️ 彈出身分再次確認 Modal
+  const modal = document.getElementById("identityConfirmModal");
+  if (modal) {
+    document.getElementById("confirmClassDisplay").textContent = data.sClass + " 班";
+    document.getElementById("confirmSeatDisplay").textContent = data.sSeat;
+    document.getElementById("confirmNameDisplay").textContent = data.sName;
+    modal.style.display = "flex";
+
+    document.getElementById("btnConfirmModify").onclick = () => {
+      modal.style.display = "none";
+      switchToStep("1");
+      document.getElementById("studentClass").focus();
+    };
+
+    document.getElementById("btnConfirmSubmit").onclick = () => {
+      modal.style.display = "none";
+      executeFinalSubmit(data);
+    };
+    return;
+  }
+
+  executeFinalSubmit(data);
+}
+
+function executeFinalSubmit(data) {
   // 1. 計算任務一～任務六 基礎歷程分 (滿分 50 分)
   let task1To6Score = 0;
   let task1To6Filled = 0;

@@ -695,6 +695,31 @@ function handleSubmitIndividual() {
     return;
   }
 
+  // 🛡️ 彈出身分再次確認 Modal
+  const modal = document.getElementById("identityConfirmModal");
+  if (modal) {
+    document.getElementById("confirmClassDisplay").textContent = cls + " 班";
+    document.getElementById("confirmSeatDisplay").textContent = seat;
+    document.getElementById("confirmNameDisplay").textContent = name;
+    modal.style.display = "flex";
+
+    document.getElementById("btnConfirmModify").onclick = () => {
+      modal.style.display = "none";
+      document.getElementById("identityCard").scrollIntoView({ behavior: "smooth" });
+      document.getElementById("studentClass").focus();
+    };
+
+    document.getElementById("btnConfirmSubmit").onclick = () => {
+      modal.style.display = "none";
+      executeFinalSubmitIndividual(cls, seat, name);
+    };
+    return;
+  }
+
+  executeFinalSubmitIndividual(cls, seat, name);
+}
+
+function executeFinalSubmitIndividual(cls, seat, name) {
   // 檢查是否重複提交
   const existingSubmission = localStorage.getItem(STORAGE_KEY_SUBMIT_INDIV);
   if (existingSubmission) {
