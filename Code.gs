@@ -22,7 +22,7 @@ function doGet(e) {
     // 1. 讀取指定單元學習單的繳交紀錄
     if (action === "getRecords") {
       var sheetName = sheetId === "4-1" ? nervousSheetName("作答紀錄") : "單元" + sheetId + "作答紀錄";
-      var sheet = ss.getSheetByName(sheetName);
+      var sheet = sheetId === "4-1" ? readNervousRecords(ss, false) : ss.getSheetByName(sheetName);
       
       // 相容舊命名格式
       if (!sheet && (sheetId !== "4-1" || !nervousCohort())) sheet = ss.getSheetByName("第" + sheetId + "週作答紀錄");
@@ -112,6 +112,7 @@ function doPost(e) {
     if (sheetId === "4-1") {
       groupLock = LockService.getScriptLock();
       groupLock.waitLock(15000);
+      prepareNervousSheets(ss);
       if (data.mode === "group" && !data.action) return submitNervousGroup(ss, data);
     }
 
@@ -443,7 +444,10 @@ function formatAllSheets() {
   for (var i = 0; i < sheets.length; i++) {
     var s = sheets[i];
     var name = s.getName();
-    if (name.indexOf("作答紀錄") !== -1) {
+    if (/^單元4-1作答紀錄(?:$|｜)/.test(name) && s.getRange("A1").getValue() === "最近留存繳交時間") {
+      formatNervousSummary(s);
+      count++;
+    } else if (name.indexOf("作答紀錄") !== -1) {
       if (s.getLastRow() > 2) {
         try {
           s.getRange(2, 1, s.getLastRow() - 1, 8).sort([
@@ -482,7 +486,7 @@ function cleanAllSheetsDuplicates() {
   for (var i = 0; i < sheets.length; i++) {
     var s = sheets[i];
     var name = s.getName();
-    if (!/^單元4-1(?:小組)?作答紀錄(?:$|｜)/.test(name) && name.indexOf("作答紀錄") !== -1 && s.getLastRow() > 1) {
+    if (!/^單元4-1(?:個人原始|小組原始|小組)?作答紀錄(?:$|｜)/.test(name) && name.indexOf("作答紀錄") !== -1 && s.getLastRow() > 1) {
       var lastRow = s.getLastRow();
       var dataRange = s.getRange(2, 1, lastRow - 1, 8);
       var rawRows = dataRange.getValues();
@@ -588,7 +592,7 @@ function onOpen() {
   SpreadsheetApp.getUi()
     .createMenu('🧬 生物學習單工具')
     .addItem('✨ 一鍵美化所有工作表 (套用科技藍調樣式)', 'formatAllSheets')
-    .addItem('📊 更新 4-1 成績總覽', 'refreshNervousSummary')
+    .addItem('📊 更新單元 4-1 作答紀錄', 'refreshNervousSummary')
     .addItem('📅 切換 4-1 作答梯次', 'switchNervousCohort')
     .addSeparator()
     .addItem('🧹 智能清理重複繳交紀錄 (保留同名最高分，絕不覆蓋不同學生)', 'cleanAllSheetsDuplicates')
@@ -607,7 +611,31 @@ function nervousAttendanceId() {
 
 function nervousSheetName(kind) {
   const cohort = nervousCohort();
-  return "單元4-1" + kind + (cohort ? "｜" + cohort : "");
+  return "單元4-1" + (kind === "小組作答紀錄" ? "小組原始作答紀錄" : "個人原始作答紀錄") + (cohort ? "｜" + cohort : "");
+}
+
+function nervousTeacherName() {
+  const cohort = nervousCohort();
+  return "單元4-1作答紀錄" + (cohort ? "｜" + cohort : "");
+}
+
+function readNervousRecords(ss, group) {
+  const sheet = ss.getSheetByName(nervousSheetName(group ? "小組作答紀錄" : "作答紀錄"));
+  if (sheet) return sheet;
+  const cohort = nervousCohort();
+  const legacy = ss.getSheetByName(group ? "單元4-1小組作答紀錄" + (cohort ? "｜" + cohort : "") : nervousTeacherName());
+  return legacy && legacy.getRange("A1").getValue() === "時間戳記" ? legacy : null;
+}
+
+function prepareNervousSheets(ss) {
+  for (const group of [false, true]) {
+    const raw = readNervousRecords(ss, group);
+    const target = nervousSheetName(group ? "小組作答紀錄" : "作答紀錄");
+    if (raw && raw.getName() !== target) raw.setName(target);
+  }
+  const cohort = nervousCohort();
+  const legacySummary = ss.getSheetByName("4-1 成績總覽" + (cohort ? "｜" + cohort : ""));
+  if (legacySummary && !ss.getSheetByName(nervousTeacherName())) legacySummary.setName(nervousTeacherName());
 }
 
 function switchNervousCohort() {
@@ -789,6 +817,7 @@ function nervousSubmissionTime(value) {
 }
 
 function updateNervousSummary(ss) {
+  prepareNervousSheets(ss);
   const seats = new Map();
   function seatEntry(cls, seat) {
     const key = cls + "/" + seat;
@@ -823,7 +852,9 @@ function updateNervousSummary(ss) {
     const score = scoreOf(row[5]);
     entry.submittedAt = Math.max(entry.submittedAt, nervousSubmissionTime(row[0]) || 0);
     const previous = entry.names.get(name);
-    if (previous == null || (score != null && score > previous)) entry.names.set(name, score);
+    if (!previous || previous.score == null || (score != null && score >= previous.score)) {
+      entry.names.set(name, { score, detail: nervousDetail(row[7]) });
+    }
   });
   nervousRows(ss.getSheetByName(nervousSheetName("小組作答紀錄"))).forEach(row => {
     const cls = String(row[1]).trim(), group = nervousSeat(row[2]);
@@ -832,16 +863,18 @@ function updateNervousSummary(ss) {
     const score = detail.complete === false ? null : scoreOf(row[5]);
     nervousMembers(row[3]).forEach(seat => {
       const entry = seatEntry(cls, seat);
-      entry.groups.set(group, score);
+      entry.groups.set(group, { score, tasks: nervousGroupTasks(detail) });
       entry.submittedAt = Math.max(entry.submittedAt, nervousSubmissionTime(row[0]) || 0);
     });
   });
 
-  const header = ["最近留存繳交時間","班級","座號","姓名","採計平均","個人最高分","小組成績","組別","狀態"];
+  const header = ["最近留存繳交時間","班級","座號","姓名","採計平均","個人最高分","小組成績","組別","狀態","個人作答紀錄","本人負責的小組作答"];
   const rows = Array.from(seats.values()).sort((a,b) => a.cls.localeCompare(b.cls) || a.seat.localeCompare(b.seat)).map(entry => {
     const names = Array.from(entry.names.keys()), groups = Array.from(entry.groups.keys()).sort();
-    const individual = names.length === 1 ? entry.names.get(names[0]) : null;
-    const group = groups.length === 1 && names.length <= 1 ? entry.groups.get(groups[0]) : null;
+    const individualEntry = names.length === 1 ? entry.names.get(names[0]) : null;
+    const groupEntry = groups.length === 1 && names.length <= 1 ? entry.groups.get(groups[0]) : null;
+    const individual = individualEntry?.score ?? null;
+    const group = groupEntry?.score ?? null;
     const issues = [];
     if (names.length > 1) issues.push("同座號多個姓名");
     if (groups.length > 1) issues.push("組別重複");
@@ -851,35 +884,28 @@ function updateNervousSummary(ss) {
       average !== "" ? "已完成" : individual == null && group == null ? "待繳" : individual == null ? "待個人作答" : "待小組完成";
     const submittedAt = entry.submittedAt
       ? Utilities.formatDate(new Date(entry.submittedAt), "Asia/Taipei", "yyyy/MM/dd HH:mm") : "";
-    return [submittedAt, entry.cls, entry.seat, names.join("／"), average, individual ?? "", group ?? "", groups.join("／"), status];
+    return [submittedAt, entry.cls, entry.seat, names.join("／"), average, individual ?? "", group ?? "", groups.join("／"), status,
+      individualEntry ? nervousIndividualAnswers(individualEntry.detail) : "",
+      groupEntry ? nervousAssignedAnswers(groupEntry.tasks, entry.seat) : ""];
+
   });
 
-  const cohort = nervousCohort();
-  const summaryName = "4-1 成績總覽" + (cohort ? "｜" + cohort : "");
+  const summaryName = nervousTeacherName();
   let summary = ss.getSheetByName(summaryName);
   if (!summary) summary = ss.insertSheet(summaryName, 0);
-  if (summary.getRange(1, 1).getValue() !== header[0]) {
+  if (summary.getRange(1, 1).getValue() !== header[0] || summary.getRange(1, header.length).getValue() !== header[header.length - 1]) {
+    const shift = summary.getRange(1, 1).getValue() === "班級" ? 1 : 0;
     const oldFilter = summary.getFilter();
     const oldCriteria = [];
     if (oldFilter) {
       const range = oldFilter.getRange();
       for (let col = range.getColumn(); col <= range.getLastColumn(); col++) {
         const criteria = oldFilter.getColumnFilterCriteria(col);
-        if (criteria) oldCriteria.push([col + 1, criteria]);
+        if (criteria) oldCriteria.push([col + shift, criteria]);
       }
       oldFilter.remove();
     }
-    summary.setFrozenRows(1);
-    summary.getRange(1, 1, 1, header.length).setBackground("#1E3A8A").setFontColor("#FFFFFF").setFontWeight("bold");
-    summary.setColumnWidth(1, 155);
-    summary.setColumnWidth(3, 75);
-    summary.setColumnWidth(4, 150);
-    summary.setColumnWidth(8, 90);
-    summary.setColumnWidth(9, 250);
-    summary.getRange("A:A").setNumberFormat("@");
-    summary.getRange("B:B").setNumberFormat("0");
-    summary.getRange("C:C").setNumberFormat("@");
-    summary.getRange("E:E").setNumberFormat("0.##");
+    formatNervousSummary(summary);
     const filter = summary.getRange(1, 1, summary.getMaxRows(), header.length).createFilter();
     oldCriteria.forEach(([col, criteria]) => filter.setColumnFilterCriteria(col, criteria));
   }
@@ -889,6 +915,56 @@ function updateNervousSummary(ss) {
   if (previousRows > rows.length + 1) {
     summary.getRange(rows.length + 2, 1, previousRows - rows.length - 1, header.length).clearContent();
   }
+  for (const group of [false, true]) {
+    const raw = readNervousRecords(ss, group);
+    if (raw && !raw.isSheetHidden()) raw.hideSheet();
+  }
+}
+
+function formatNervousSummary(sheet) {
+  sheet.setFrozenRows(1);
+  sheet.setRowHeight(1, 38);
+  sheet.getRange(1, 1, 1, 11).setBackground("#1E3A8A").setFontColor("#FFFFFF").setFontWeight("bold");
+  [155, 75, 65, 150, 100, 100, 100, 75, 240, 340, 340].forEach((width, index) => {
+    sheet.setColumnWidth(index + 1, width);
+  });
+  sheet.getRange("A:A").setNumberFormat("@");
+  sheet.getRange("B:B").setNumberFormat("0");
+  sheet.getRange("C:C").setNumberFormat("@");
+  sheet.getRange("E:E").setNumberFormat("0.##");
+  sheet.getRange("J:K").setWrapStrategy(SpreadsheetApp.WrapStrategy.CLIP);
+}
+
+function nervousIndividualAnswers(detail) {
+  const labels = {
+    q1_receptor: "關卡1・受器", q1_center: "關卡1・中樞", q1_effector: "關卡1・動器",
+    q2_brain_class: "關卡2・腦和脊髓分類", q2_brain_func: "關卡2・腦和脊髓功能",
+    q2_nerve_class: "關卡2・腦神經與脊神經分類", q2_nerve_func: "關卡2・腦神經與脊神經功能",
+    q2_neu: "關卡2・神經元", p_receptor: "關卡3・受器順序", p_sensory: "關卡3・感覺神經元順序",
+    p_brain: "關卡3・大腦順序", p_spine: "關卡3・脊髓順序", p_motor: "關卡3・運動神經元順序",
+    q3_not_answer: "關卡3・路徑判斷", q4_reaction_def: "關卡4・反應時間定義",
+    q4_diff_variation: "關卡4・變動較大", q4_time_compare: "關卡4・時間比較",
+    rulerValues: "關卡4・接尺秒數", q4_rs: "關卡4・圖表推理",
+    q5_bio_factor: "關卡5・車距生物因素", q5_phy_factor: "關卡5・車距物理因素",
+    q5_distracted_result: "關卡5・分心影響", q5_pedestrian_essay: "關卡5・行人簡答"
+  };
+  return Object.keys(labels).filter(key => Array.isArray(detail[key]) ? detail[key].length : String(detail[key] ?? "").trim())
+    .map(key => labels[key] + "：" + (Array.isArray(detail[key]) ? detail[key].join("、") : detail[key])).join("\n");
+}
+
+function nervousAssignedAnswers(tasks, seat) {
+  const labels = {
+    name: "構造", func: "功能", case: "案例",
+    con_center: "意識中樞", ref_center: "反射中樞", con_path: "意識路徑", ref_path: "反射路徑",
+    con_time: "意識反應時間", ref_time: "反射反應時間", con_sign: "意識行為意義", ref_sign: "反射意義",
+    pull_center: "縮手中樞", pull_order: "縮手順序", pain_center: "感覺中樞", pain_order: "感覺順序",
+    t1_dist_calc: "車距計算", t1_dist_reason: "車距說明", t2_alcohol: "酒精影響"
+  };
+  return Object.keys(tasks).filter(id => tasks[id].seat === seat).map(id => {
+    const answers = tasks[id].answers;
+    return id + "｜" + Object.keys(answers).map(key => labels[key] + "：" +
+      (Array.isArray(answers[key]) ? answers[key].join("、") : answers[key])).join("；");
+  }).join("\n");
 }
 
 function scoreNervousGroup(detail) {
