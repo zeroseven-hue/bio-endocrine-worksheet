@@ -779,11 +779,20 @@ function refreshNervousSummary() {
   }
 }
 
+function nervousSubmissionTime(value) {
+  if (value instanceof Date) return value.getTime();
+  const match = String(value || "").trim().match(/^(\d{4})[/-](\d{1,2})[/-](\d{1,2})[ ,，]*(上午|下午)?\s*(\d{1,2}):(\d{2})(?::(\d{2}))?$/);
+  if (!match) return Date.parse(value) || 0;
+  const [, year, month, day, period, hour, minute, second] = match;
+  const hour24 = period ? Number(hour) % 12 + (period === "下午" ? 12 : 0) : Number(hour);
+  return Date.UTC(Number(year), Number(month) - 1, Number(day), hour24 - 8, Number(minute), Number(second || 0));
+}
+
 function updateNervousSummary(ss) {
   const seats = new Map();
   function seatEntry(cls, seat) {
     const key = cls + "/" + seat;
-    if (!seats.has(key)) seats.set(key, { cls, seat, names: new Map(), groups: new Map(), absent: false });
+    if (!seats.has(key)) seats.set(key, { cls, seat, names: new Map(), groups: new Map(), absent: false, submittedAt: 0 });
     return seats.get(key);
   }
   function scoreOf(value) {
@@ -812,6 +821,7 @@ function updateNervousSummary(ss) {
     if (!schoolClass(cls) || !seat || !name) return;
     const entry = seatEntry(cls, seat);
     const score = scoreOf(row[5]);
+    entry.submittedAt = Math.max(entry.submittedAt, nervousSubmissionTime(row[0]) || 0);
     const previous = entry.names.get(name);
     if (previous == null || (score != null && score > previous)) entry.names.set(name, score);
   });
@@ -820,10 +830,14 @@ function updateNervousSummary(ss) {
     if (!schoolClass(cls) || !group) return;
     const detail = nervousDetail(row[7]);
     const score = detail.complete === false ? null : scoreOf(row[5]);
-    nervousMembers(row[3]).forEach(seat => seatEntry(cls, seat).groups.set(group, score));
+    nervousMembers(row[3]).forEach(seat => {
+      const entry = seatEntry(cls, seat);
+      entry.groups.set(group, score);
+      entry.submittedAt = Math.max(entry.submittedAt, nervousSubmissionTime(row[0]) || 0);
+    });
   });
 
-  const header = ["班級","座號","姓名","採計平均","個人最高分","小組成績","組別","狀態"];
+  const header = ["最近留存繳交時間","班級","座號","姓名","採計平均","個人最高分","小組成績","組別","狀態"];
   const rows = Array.from(seats.values()).sort((a,b) => a.cls.localeCompare(b.cls) || a.seat.localeCompare(b.seat)).map(entry => {
     const names = Array.from(entry.names.keys()), groups = Array.from(entry.groups.keys()).sort();
     const individual = names.length === 1 ? entry.names.get(names[0]) : null;
@@ -835,21 +849,39 @@ function updateNervousSummary(ss) {
     const average = !issues.length && !entry.absent && individual != null && group != null ? (individual + group) / 2 : "";
     const status = issues.length ? "待核對：" + issues.join("、") : entry.absent ? "請假／缺號" :
       average !== "" ? "已完成" : individual == null && group == null ? "待繳" : individual == null ? "待個人作答" : "待小組完成";
-    return [entry.cls, entry.seat, names.join("／"), average, individual ?? "", group ?? "", groups.join("／"), status];
+    const submittedAt = entry.submittedAt
+      ? Utilities.formatDate(new Date(entry.submittedAt), "Asia/Taipei", "yyyy/MM/dd HH:mm") : "";
+    return [submittedAt, entry.cls, entry.seat, names.join("／"), average, individual ?? "", group ?? "", groups.join("／"), status];
   });
 
   const cohort = nervousCohort();
   const summaryName = "4-1 成績總覽" + (cohort ? "｜" + cohort : "");
   let summary = ss.getSheetByName(summaryName);
-  if (!summary) {
-    summary = ss.insertSheet(summaryName, 0);
+  if (!summary) summary = ss.insertSheet(summaryName, 0);
+  if (summary.getRange(1, 1).getValue() !== header[0]) {
+    const oldFilter = summary.getFilter();
+    const oldCriteria = [];
+    if (oldFilter) {
+      const range = oldFilter.getRange();
+      for (let col = range.getColumn(); col <= range.getLastColumn(); col++) {
+        const criteria = oldFilter.getColumnFilterCriteria(col);
+        if (criteria) oldCriteria.push([col + 1, criteria]);
+      }
+      oldFilter.remove();
+    }
     summary.setFrozenRows(1);
     summary.getRange(1, 1, 1, header.length).setBackground("#1E3A8A").setFontColor("#FFFFFF").setFontWeight("bold");
-    summary.setColumnWidth(3, 150);
-    summary.setColumnWidth(8, 250);
-    summary.getRange(1, 1, summary.getMaxRows(), header.length).createFilter();
-    summary.getRange("B:B").setNumberFormat("@");
-    summary.getRange("D:D").setNumberFormat("0.##");
+    summary.setColumnWidth(1, 155);
+    summary.setColumnWidth(3, 75);
+    summary.setColumnWidth(4, 150);
+    summary.setColumnWidth(8, 90);
+    summary.setColumnWidth(9, 250);
+    summary.getRange("A:A").setNumberFormat("@");
+    summary.getRange("B:B").setNumberFormat("0");
+    summary.getRange("C:C").setNumberFormat("@");
+    summary.getRange("E:E").setNumberFormat("0.##");
+    const filter = summary.getRange(1, 1, summary.getMaxRows(), header.length).createFilter();
+    oldCriteria.forEach(([col, criteria]) => filter.setColumnFilterCriteria(col, criteria));
   }
   if (rows.length + 1 > summary.getMaxRows()) summary.insertRowsAfter(summary.getMaxRows(), rows.length + 1 - summary.getMaxRows());
   const previousRows = summary.getLastRow();
