@@ -745,7 +745,7 @@ function executeFinalSubmitIndividual(cls, seat, name) {
   // 檢查是否重複提交
   const existingSubmission = localStorage.getItem(STORAGE_KEY_SUBMIT_INDIV);
   if (existingSubmission) {
-    const confirmOverwrite = confirm("⚠️ 系統偵測到您先前已提交過成績！\n\n再次送出可能更新雲端作答紀錄，確定要重新繳交嗎？");
+    const confirmOverwrite = confirm("⚠️ 系統偵測到您先前已提交過成績！\n\n重新繳交只會在分數更高時更新採計紀錄。確定要補交嗎？");
     if (!confirmOverwrite) return;
   }
 
@@ -875,109 +875,6 @@ function handleSubmitGroup() {
     return;
   }
 
-  // 關鍵防呆：驗證每位到齊組員皆至少認領並作答了 1 題
-  const claimedAssignees = [];
-  ["A", "B", "C", "D"].forEach(c => {
-    const el = document.getElementById(`assigneeCenter${c}`);
-    if (el && el.value && !claimedAssignees.includes(el.value)) claimedAssignees.push(el.value);
-  });
-  ["assigneeCompare1", "assigneeCompare2", "assigneeTraffic1", "assigneeTraffic2"].forEach(id => {
-    const el = document.getElementById(id);
-    if (el && el.value && !claimedAssignees.includes(el.value)) claimedAssignees.push(el.value);
-  });
-
-  const missingMembers = members.filter(m => !claimedAssignees.includes(m));
-  if (missingMembers.length > 0) {
-    alert(`⚠️ 小組責任分工防呆：\n座號【 ${missingMembers.join("、 ")} 】同學尚未認領任何題目！\n\n請讓每位組員都認領至少 1 個中樞任務、路徑比較表或交通探討題，共同參與作答。`);
-    return;
-  }
-
-  const existingGroupSubmission = localStorage.getItem(STORAGE_KEY_SUBMIT_GROUP);
-  if (existingGroupSubmission) {
-    const confirmOverwrite = confirm("⚠️ 系統偵測到本組先前已繳交過報告！\n\n再次送出可能更新雲端作答紀錄，確定要重新繳交嗎？");
-    if (!confirmOverwrite) return;
-  }
-
-  // 小組計分 (滿分 100 分)
-  let score = 0;
-  const breakdownList = [];
-
-  // 【任務一：中樞解剖座標認領 (共 32 分)】
-  const correctCenters = {
-    A: { name: "大腦", func: "意識與感覺思考運動", case: "中風半身不遂或失語" },
-    B: { name: "小腦", func: "協調骨骼肌維持平衡", case: "酒醉走路搖晃步伐不穩" },
-    C: { name: "腦幹", func: "心跳呼吸生命中樞", case: "昏迷呼吸停止腦死判定" },
-    D: { name: "脊髓", func: "軀幹四肢反射中樞", case: "小兒麻痺或下半身癱瘓" }
-  };
-
-  ["A", "B", "C", "D"].forEach(c => {
-    const n = document.getElementById(`nameCenter${c}`).value;
-    const f = document.getElementById(`funcCenter${c}`).value;
-    const cs = document.getElementById(`caseCenter${c}`).value;
-    const cor = correctCenters[c];
-
-    if (n === cor.name && f === cor.func && cs === cor.case) {
-      score += 8;
-      breakdownList.push(`任務一中樞${c}(${cor.name})全對 (+8)`);
-    } else if (n === cor.name && (f === cor.func || cs === cor.case)) {
-      score += 5;
-      breakdownList.push(`任務一中樞${c}(${cor.name})部分正確 (+5)`);
-    }
-  });
-
-  // 【任務二：意識行為 vs 反射雙軌模型 (共 32 分)】
-  // 表一 (16分)
-  let t1Hits = 0;
-  if (document.getElementById("comp_con_center").value === "大腦") t1Hits++;
-  if (document.getElementById("comp_ref_center").value === "脊髓或腦幹") t1Hits++;
-  if (document.getElementById("comp_con_path").value === "較長需經大腦分析") t1Hits++;
-  if (document.getElementById("comp_ref_path").value === "極短不經大腦思考") t1Hits++;
-  if (document.getElementById("comp_con_time").value === "時間長易受分心干擾") t1Hits++;
-  if (document.getElementById("comp_ref_time").value === "極迅速且固定不變") t1Hits++;
-  if (document.getElementById("comp_con_sign").value === "彈性學習因應複雜環境") t1Hits++;
-  if (document.getElementById("comp_ref_sign").value === "緊急防禦爭取生機") t1Hits++;
-
-  score += t1Hits * 2;
-  if (t1Hits >= 6) breakdownList.push(`任務二比較表一機制大對決精準 (+${t1Hits*2})`);
-
-  // 表二 (16分)
-  if (document.getElementById("seq_pull_center").value === "脊髓" && document.getElementById("seq_pull_order").value === "先發生") {
-    score += 8; breakdownList.push("縮手反射先發生正確 (+8)");
-  }
-  if (document.getElementById("seq_pain_center").value === "大腦" && document.getElementById("seq_pain_order").value === "後發生") {
-    score += 8; breakdownList.push("大腦感到劇痛後發生正確 (+8)");
-  }
-
-  // 【任務三：交通安全實況危機模擬與宣言 (共 36 分)】
-  if (document.getElementById("t1_dist_calc").value === "約33公尺") {
-    score += 8; breakdownList.push("情境一安全車距計算精準 (+8)");
-  }
-  const t1Reason = document.getElementById("t1_dist_reason") ? document.getElementById("t1_dist_reason").value.trim() : "";
-  if (t1Reason.length >= 8) {
-    score += 6; breakdownList.push("情境一車距意涵分析完整 (+6)");
-  }
-
-  const t2Alc = Array.from(document.querySelectorAll('input[name="t2_alc"]:checked')).map(cb => cb.value);
-  const t2Traps = ["增強視力夜視功能", "骨骼鈣質快速結晶硬化"];
-  const hasAlcTraps = t2Alc.some(item => t2Traps.includes(item));
-  if (t2Alc.includes("麻痺大腦判斷遲鈍") && t2Alc.includes("麻痺小腦步伐不穩") && t2Alc.includes("神經傳導延緩反應時間拉長") && !hasAlcTraps) {
-    score += 10; breakdownList.push("情境二酒駕神經毒性機制全對 (+10)");
-  } else if (!hasAlcTraps && t2Alc.length >= 2) {
-    score += 6; breakdownList.push("情境二酒駕分析部分正確 (+6)");
-  }
-
-  // 宣言 (12分)
-  const groupTrafficEssay = document.getElementById("group_traffic_essay") ? document.getElementById("group_traffic_essay").value.trim() : "";
-  const essayWords = ["安全", "車距", "專注", "手機", "觀察", "防禦", "行人", "轉頭", "遵守", "提醒", "減速"];
-  const hasTrafficKeywords = essayWords.some(w => groupTrafficEssay.includes(w));
-  if (groupTrafficEssay.length >= 25 && hasTrafficKeywords) {
-    score += 12; breakdownList.push("情境三防禦性駕駛行動承諾深刻 (+12)");
-  } else if (groupTrafficEssay.length >= 8) {
-    score += 6; breakdownList.push("情境三行動承諾基本填寫 (+6)");
-  }
-
-  score = Math.min(100, score);
-
   const payload = {
     sheetId: "4-1",
     mode: "group",
@@ -987,14 +884,14 @@ function handleSubmitGroup() {
     studentGroup: groupNum,
     nameOrMembers: members.join(", "),
     groupMembers: members.join(", "),
-    score: score,
-    scoreBreakdown: breakdownList,
-    essay: groupTrafficEssay || "小組交通安全模型完成",
+    score: 0,
+    scoreBreakdown: [],
+    essay: document.getElementById("group_traffic_essay").value.trim(),
     detailData: saveGroupDraft(),
     timestamp: new Date().toLocaleString("zh-TW", { timeZone: "Asia/Taipei" })
   };
 
-  sendToGAS(payload, score);
+  sendToGAS(payload, null);
 }
 
 // ==================== 7. 後端 GAS 傳送 ====================
@@ -1015,28 +912,70 @@ async function sendToGAS(payload, score) {
   const submitLabel = submitButton && (submitButton.querySelector(".btn-text") || submitButton);
   const originalLabel = submitLabel?.textContent;
   if (submitLabel) submitLabel.textContent = uploading;
-  document.getElementById("scoreVal").textContent = score;
+  document.getElementById("scoreVal").textContent = score ?? "—";
   status.textContent = uploading;
   details.textContent = `${isIndividual ? "個人學習單" : "小組學習單"} ｜ ${identity}`;
   document.getElementById("resultModal").classList.remove("hidden");
 
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 8000);
+  const timeout = isIndividual ? setTimeout(() => controller.abort(), 25000) : null;
   try {
-    await fetch(GAS_URL, {
+    if (!isIndividual) {
+      const submit = async () => {
+        const request = new AbortController();
+        const requestTimeout = setTimeout(() => request.abort(), 25000);
+        try {
+          const response = await fetch(GAS_URL, {
+            method: "POST",
+            headers: { "Content-Type": "text/plain;charset=utf-8" },
+            body: JSON.stringify(payload),
+            signal: request.signal
+          });
+          if (!response.ok) throw new Error("上傳連線失敗");
+          return await response.json();
+        } finally {
+          clearTimeout(requestTimeout);
+        }
+      };
+      let result = await submit();
+      while (result.status === "conflict") {
+        if (!confirm("本組已提交 " + result.tasks.join("、") + "。確定更新這些任務嗎？")) {
+          status.textContent = "已取消更新，這次答案仍在本機暫存。";
+          return;
+        }
+        payload.confirmedRevision = result.revision;
+        result = await submit();
+      }
+      if (result.status !== "success") {
+        status.textContent = result.message || "未能儲存，請向老師確認。";
+        return;
+      }
+      document.getElementById("scoreVal").textContent = result.complete ? result.recordedScore : "—";
+      status.textContent = result.complete ? "✅ 小組報告已收齊，分數已更新。" : "✅ 這次答案已合併，等待其餘任務。";
+      if (result.breakdown.length) details.append(" ｜ " + result.breakdown.join("、"));
+      localStorage.setItem(STORAGE_KEY_SUBMIT_GROUP, JSON.stringify({ timestamp: payload.timestamp, score: result.recordedScore, target: identity }));
+      return;
+    }
+    const response = await fetch(GAS_URL, {
       method: "POST",
-      mode: "no-cors",
       headers: { "Content-Type": "text/plain;charset=utf-8" },
       body: JSON.stringify(payload),
       signal: controller.signal
     });
-    const key = isIndividual ? STORAGE_KEY_SUBMIT_INDIV : STORAGE_KEY_SUBMIT_GROUP;
+    if (!response.ok) throw new Error("上傳連線失敗");
+    const result = await response.json();
+    if (result.status !== "success") {
+      status.textContent = result.message || "未能儲存，請向老師確認。";
+      return;
+    }
+    const recordedScore = result.recordedScore ?? score;
+    const key = STORAGE_KEY_SUBMIT_INDIV;
     localStorage.setItem(key, JSON.stringify({
       timestamp: payload.timestamp,
-      score,
+      score: recordedScore,
       target: `${payload.class}班 ${payload.seatOrGroup}`
     }));
-    status.textContent = "📡 已送出上傳請求，實際收件以老師的試算表為準。";
+    status.textContent = "✅ 已收到本次作答。個人採計最高分：" + recordedScore + " 分。";
     const breakdown = document.createElement("p");
     breakdown.textContent = payload.scoreBreakdown.join("、");
     details.appendChild(breakdown);

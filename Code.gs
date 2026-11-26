@@ -21,12 +21,12 @@ function doGet(e) {
 
     // 1. 讀取指定單元學習單的繳交紀錄
     if (action === "getRecords") {
-      var sheetName = "單元" + sheetId + "作答紀錄";
+      var sheetName = sheetId === "4-1" ? nervousSheetName("作答紀錄") : "單元" + sheetId + "作答紀錄";
       var sheet = ss.getSheetByName(sheetName);
       
       // 相容舊命名格式
-      if (!sheet) sheet = ss.getSheetByName("第" + sheetId + "週作答紀錄");
-      if (!sheet) sheet = ss.getSheetByName("作答紀錄_" + sheetId);
+      if (!sheet && (sheetId !== "4-1" || !nervousCohort())) sheet = ss.getSheetByName("第" + sheetId + "週作答紀錄");
+      if (!sheet && (sheetId !== "4-1" || !nervousCohort())) sheet = ss.getSheetByName("作答紀錄_" + sheetId);
 
       var records = [];
 
@@ -60,7 +60,7 @@ function doGet(e) {
         var attData = attSheet.getDataRange().getValues();
         for (var j = attData.length - 1; j >= 1; j--) {
           var aRow = attData[j];
-          if (String(aRow[1]).trim() === String(classId).trim() && String(aRow[2]).trim() === String(sheetId).trim()) {
+          if (String(aRow[1]).trim() === String(classId).trim() && String(aRow[2]).trim() === (sheetId === "4-1" ? nervousAttendanceId() : String(sheetId).trim())) {
             attendance = {
               expectedCount: Number(aRow[3]) || 30,
               absentSeats: String(aRow[4] || "").split(',').map(function(s) { return s.trim(); }).filter(Boolean)
@@ -75,7 +75,8 @@ function doGet(e) {
         sheetId: sheetId,
         studentClass: classId,
         records: records,
-        attendance: attendance
+        attendance: attendance,
+        cohort: sheetId === "4-1" ? nervousCohort() : ""
       })).setMimeType(ContentService.MimeType.JSON);
     }
 
@@ -108,6 +109,12 @@ function doPost(e) {
     var ss = SpreadsheetApp.getActiveSpreadsheet();
     var sheetId = data.sheetId || data.unitId || data.weekId || "4-2";
 
+    if (sheetId === "4-1") {
+      groupLock = LockService.getScriptLock();
+      groupLock.waitLock(15000);
+      if (data.mode === "group" && !data.action) return submitNervousGroup(ss, data);
+    }
+
     // 模式 A：教師儀表板一鍵儲存出缺席與請假座號
     if (data.action === "saveAttendance") {
       var attSheet = ss.getSheetByName("出缺席紀錄");
@@ -120,13 +127,14 @@ function doPost(e) {
       attSheet.appendRow([
         new Date().toLocaleString('zh-TW', { timeZone: 'Asia/Taipei' }),
         data.studentClass,
-        sheetId,
+        sheetId === "4-1" ? nervousAttendanceId() : sheetId,
         data.expectedCount,
         (data.absentSeats || []).join(", "),
         (data.unsubmittedSeats || []).join(", "),
         "由教師即時儀表板同步"
       ]);
 
+      if (sheetId === "4-1") updateNervousSummary(ss);
       return ContentService.createTextOutput(JSON.stringify({
         status: "success",
         message: "出缺席紀錄已成功儲存至試算表【出缺席紀錄】分頁！"
@@ -135,10 +143,10 @@ function doPost(e) {
 
     // 模式 B：教師一鍵裁決座號轉移 (Plan B 核心支援，免開試算表)
     if (data.action === "reassignSeat") {
-      var sheetName = "單元" + sheetId + "作答紀錄";
+      var sheetName = sheetId === "4-1" ? nervousSheetName("作答紀錄") : "單元" + sheetId + "作答紀錄";
       var sheet = ss.getSheetByName(sheetName);
-      if (!sheet) sheet = ss.getSheetByName("第" + sheetId + "週作答紀錄");
-      if (!sheet) sheet = ss.getSheetByName("作答紀錄_" + sheetId);
+      if (!sheet && (sheetId !== "4-1" || !nervousCohort())) sheet = ss.getSheetByName("第" + sheetId + "週作答紀錄");
+      if (!sheet && (sheetId !== "4-1" || !nervousCohort())) sheet = ss.getSheetByName("作答紀錄_" + sheetId);
 
       if (!sheet) {
         return ContentService.createTextOutput(JSON.stringify({
@@ -159,7 +167,8 @@ function doPost(e) {
         for (var i = 0; i < values.length; i++) {
           var rClass = String(values[i][1]).trim();
           var rName = String(values[i][3]).trim();
-          if (rClass === targetClass && rName === studentName) {
+          if (rClass === targetClass && rName === studentName &&
+              (sheetId !== "4-1" || nervousSeat(values[i][2]) === nervousSeat(data.oldSeat))) {
             targetRow = i + 2;
             break;
           }
@@ -192,6 +201,7 @@ function doPost(e) {
           formatBioSheet(sheet);
         } catch (e) {}
 
+        if (sheetId === "4-1") updateNervousSummary(ss);
         return ContentService.createTextOutput(JSON.stringify({
           status: "success",
           message: "已成功將 " + studentName + " 座號轉移至 " + newSeatStr + " 號！"
@@ -205,12 +215,7 @@ function doPost(e) {
     }
 
     // 模式 C：學生送出作答 或 教師手動補登成績
-    var isNervousGroup = sheetId === "4-1" && data.mode === "group";
-    if (isNervousGroup) {
-      groupLock = LockService.getScriptLock();
-      groupLock.waitLock(10000);
-    }
-    var sheetName = "單元" + sheetId + (isNervousGroup ? "小組作答紀錄" : "作答紀錄");
+    var sheetName = sheetId === "4-1" ? nervousSheetName("作答紀錄") : "單元" + sheetId + "作答紀錄";
     var sheet = ss.getSheetByName(sheetName);
     var isNewSheet = false;
 
@@ -258,7 +263,12 @@ function doPost(e) {
         var rowName = String(existingData[r][2] || "").trim();
 
         if (rowClass === targetClass) {
-          if (isNervousGroup || isManualGrade) {
+          if (sheetId === "4-1") {
+            if (targetName && rowName === targetName && rowSeatStr === targetSeat) {
+              existingRowIndex = r + 2;
+              break;
+            }
+          } else if (isManualGrade) {
             // 小組依組別重交，教師補登依座號更新。
             if (rowSeatStr === targetSeat) {
               existingRowIndex = r + 2;
@@ -287,6 +297,10 @@ function doPost(e) {
       typeof data.answers === 'object' ? JSON.stringify(data.answers) : (typeof data.detailData === 'object' ? JSON.stringify(data.detailData) : (data.answers || "{}"))
     ];
 
+    if (sheetId === "4-1" && existingRowIndex > 0 && !isManualGrade && Number(sheet.getRange(existingRowIndex, 6).getValue()) >= rowValues[5]) {
+      return nervousResult({ status: "success", message: "已保留原有最高分。", recordedScore: Number(sheet.getRange(existingRowIndex, 6).getValue()) });
+    }
+
     if (existingRowIndex > 0) {
       // 原地覆蓋更新同一位同學的作答紀錄
       sheet.getRange(existingRowIndex, 1, 1, 8).setValues([rowValues]);
@@ -306,6 +320,7 @@ function doPost(e) {
       } catch (e) {}
     }
 
+    if (sheetId === "4-1") updateNervousSummary(ss);
     return ContentService.createTextOutput(JSON.stringify({
       status: "success",
       message: existingRowIndex > 0 ? "已更新此同學之最新繳交紀錄！" : "資料已成功儲存至試算表！",
@@ -467,7 +482,7 @@ function cleanAllSheetsDuplicates() {
   for (var i = 0; i < sheets.length; i++) {
     var s = sheets[i];
     var name = s.getName();
-    if (name.indexOf("作答紀錄") !== -1 && s.getLastRow() > 1) {
+    if (!/^單元4-1(?:小組)?作答紀錄(?:$|｜)/.test(name) && name.indexOf("作答紀錄") !== -1 && s.getLastRow() > 1) {
       var lastRow = s.getLastRow();
       var dataRange = s.getRange(2, 1, lastRow - 1, 8);
       var rawRows = dataRange.getValues();
@@ -573,7 +588,358 @@ function onOpen() {
   SpreadsheetApp.getUi()
     .createMenu('🧬 生物學習單工具')
     .addItem('✨ 一鍵美化所有工作表 (套用科技藍調樣式)', 'formatAllSheets')
+    .addItem('📊 更新 4-1 成績總覽', 'refreshNervousSummary')
+    .addItem('📅 切換 4-1 作答梯次', 'switchNervousCohort')
     .addSeparator()
     .addItem('🧹 智能清理重複繳交紀錄 (保留同名最高分，絕不覆蓋不同學生)', 'cleanAllSheetsDuplicates')
     .addToUi();
+}
+
+
+function nervousCohort() {
+  return PropertiesService.getScriptProperties().getProperty("NERVOUS_4_1_COHORT") || "";
+}
+
+function nervousAttendanceId() {
+  const cohort = nervousCohort();
+  return cohort ? "4-1｜" + cohort : "4-1";
+}
+
+function nervousSheetName(kind) {
+  const cohort = nervousCohort();
+  return "單元4-1" + kind + (cohort ? "｜" + cohort : "");
+}
+
+function switchNervousCohort() {
+  const ui = SpreadsheetApp.getUi();
+  const reply = ui.prompt("切換 4-1 作答梯次",
+    "目前：" + (nervousCohort() || "原有梯次") + "。請輸入三位數學年度（例如 116）。留白可回到原有梯次。",
+    ui.ButtonSet.OK_CANCEL);
+  if (reply.getSelectedButton() !== ui.Button.OK) return;
+  const cohort = reply.getResponseText().trim();
+  if (cohort && !/^\d{3}$/.test(cohort)) {
+    ui.alert("請輸入三位數學年度。");
+    return;
+  }
+  const lock = LockService.getScriptLock();
+  lock.waitLock(15000);
+  try {
+    PropertiesService.getScriptProperties().setProperty("NERVOUS_4_1_COHORT", cohort);
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    updateNervousSummary(ss);
+    SpreadsheetApp.flush();
+    ss.toast("目前梯次：" + (cohort || "原有梯次"), "4-1 作答梯次");
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function nervousResult(result) {
+  return ContentService.createTextOutput(JSON.stringify(result)).setMimeType(ContentService.MimeType.JSON);
+}
+
+function nervousRows(sheet) {
+  return sheet && sheet.getLastRow() > 1 ? sheet.getRange(2, 1, sheet.getLastRow() - 1, 8).getValues() : [];
+}
+
+function nervousDetail(raw) {
+  if (raw && typeof raw === "object") return raw;
+  try { return JSON.parse(raw || "{}") || {}; } catch (error) { return {}; }
+}
+
+function nervousSeat(raw) {
+  const seat = String(raw || "").trim().replace(/^'/, "");
+  return /^\d{1,2}$/.test(seat) && Number(seat) >= 1 && Number(seat) <= 35
+    ? seat.padStart(2, "0") : "";
+}
+
+function nervousMembers(raw) {
+  return Array.from(new Set((Array.isArray(raw) ? raw : String(raw || "").split(/[,，]/))
+    .map(nervousSeat).filter(Boolean))).sort();
+}
+
+function nervousGroupTasks(detail) {
+  const traffic = detail.traffic || {};
+  const tasks = {};
+  function add(id, source, fields, assignee) {
+    const answers = {};
+    fields.forEach(field => {
+      const value = source[field];
+      if (typeof value === "string" && value.trim()) answers[field] = value.trim();
+      else if (Array.isArray(value) && value.length && value.every(item => typeof item === "string")) {
+        answers[field] = Array.from(new Set(value)).sort();
+      }
+    });
+    if (!Object.keys(answers).length) return;
+    const seat = nervousSeat(assignee);
+    tasks[id] = { answers, seat, complete: Object.keys(answers).length === fields.length };
+  }
+  ["A","B","C","D"].forEach(id => {
+    const center = (detail.centers || {})[id] || {};
+    add(id, center, ["name","func","case"], center.assignee);
+  });
+  const first = detail.compare1 || {};
+  const second = detail.compare2 || {};
+  add("比較表一", first, ["con_center","ref_center","con_path","ref_path","con_time","ref_time","con_sign","ref_sign"], first.assignee);
+  add("比較表二", second, ["pull_center","pull_order","pain_center","pain_order"], second.assignee);
+  add("安全車距", traffic, ["t1_dist_calc","t1_dist_reason"], traffic.t1_assignee);
+  add("酒駕分析", traffic, ["t2_alcohol"], traffic.t2_assignee);
+  add("行動承諾", traffic, ["group_traffic_essay"]);
+  return tasks;
+}
+
+function submitNervousGroup(ss, data) {
+  const cls = String(data.studentClass || data.class || "").trim();
+  const group = String(data.studentGroup || data.seatOrGroup || "").trim();
+  const members = nervousMembers(data.groupMembers || data.nameOrMembers);
+  if (!/^70[1-9]$|^710$/.test(cls) || !/^[1-8]$/.test(group) || members.length < 3 || members.length > 6) {
+    return nervousResult({ status: "warning", message: "請確認班級、組別與出席組員座號。" });
+  }
+  const incoming = nervousGroupTasks(nervousDetail(data.detailData));
+  const taskIds = Object.keys(incoming);
+  if (!taskIds.length || taskIds.some(id => id !== "行動承諾" && !members.includes(incoming[id].seat))) {
+    return nervousResult({ status: "warning", message: "請先填寫至少一項任務，並為本次作答的任務選擇認領組員。" });
+  }
+
+  const sheetName = nervousSheetName("小組作答紀錄");
+  let sheet = ss.getSheetByName(sheetName);
+  const rows = nervousRows(sheet);
+  const index = rows.findIndex(row => String(row[1]).trim() === cls && nervousSeat(row[2]) === nervousSeat(group));
+  const oldRow = index >= 0 ? rows[index] : null;
+  const previous = nervousDetail(oldRow && oldRow[7]);
+  const existing = nervousGroupTasks(previous);
+  const mergedDetail = {
+    class: cls, groupNum: group, groupSize: String(members.length), members,
+    centers: {}, compare1: {}, compare2: {}, traffic: {}
+  };
+
+  const sameTeam = !oldRow || JSON.stringify(nervousMembers(oldRow[3])) === JSON.stringify(members);
+  if (!sameTeam) {
+    return nervousResult({ status: "warning", message: "本組已登記的出席座號與這次不同。請核對班級、組別及組員，或請老師處理後再交。" });
+  }
+  const conflicts = taskIds.filter(id => {
+    if (!existing[id]) return false;
+    const prior = existing[id];
+    const next = incoming[id];
+    return Object.keys(next.answers).some(field => field in prior.answers &&
+      JSON.stringify(prior.answers[field]) !== JSON.stringify(next.answers[field])) ||
+      Boolean(prior.seat && next.seat && prior.seat !== next.seat);
+  });
+  const revision = oldRow ? Utilities.base64EncodeWebSafe(Utilities.computeDigest(
+    Utilities.DigestAlgorithm.SHA_256, JSON.stringify(oldRow)
+  )) : "";
+  if (conflicts.length && data.confirmedRevision !== revision) {
+    return nervousResult({ status: "conflict", tasks: conflicts, revision });
+  }
+
+  Array.from(new Set(Object.keys(existing).concat(taskIds))).forEach(id => {
+    const previousTask = existing[id] || { answers: {}, seat: "" };
+    const nextTask = incoming[id] || { answers: {}, seat: "" };
+    const answers = Object.assign({}, previousTask.answers, nextTask.answers);
+    const seat = nextTask.seat || previousTask.seat;
+    if (/^[A-D]$/.test(id)) mergedDetail.centers[id] = Object.assign({ assignee: seat }, answers);
+    else if (id === "比較表一") mergedDetail.compare1 = Object.assign({ assignee: seat }, answers);
+    else if (id === "比較表二") mergedDetail.compare2 = Object.assign({ assignee: seat }, answers);
+    else {
+      Object.assign(mergedDetail.traffic, answers);
+      if (id === "安全車距") mergedDetail.traffic.t1_assignee = seat;
+      if (id === "酒駕分析") mergedDetail.traffic.t2_assignee = seat;
+    }
+  });
+
+  const tasks = Object.values(nervousGroupTasks(mergedDetail));
+  const complete = tasks.length === 9 && tasks.every(task => task.complete) &&
+    members.every(member => tasks.some(task => task.seat === member));
+  mergedDetail.complete = complete;
+  const result = scoreNervousGroup(mergedDetail);
+  if (!sheet) sheet = ss.insertSheet(sheetName);
+  if (!sheet.getLastRow()) {
+    sheet.appendRow(["時間戳記","班級","座號","姓名","組別/模式","系統初評分數","評分明細","作答詳情 (JSON 原始紀錄)"]);
+    formatBioSheet(sheet);
+  }
+  const values = [new Date(), cls, "'" + nervousSeat(group), members.join(", "), group,
+    complete ? result.score : "", result.breakdown.join("； "), JSON.stringify(mergedDetail)];
+  if (oldRow) sheet.getRange(index + 2, 1, 1, 8).setValues([values]);
+  else sheet.appendRow(values);
+  if (sheet.getLastRow() > 2) sheet.getRange(2, 1, sheet.getLastRow() - 1, 8).sort([
+    {column: 2, ascending: true}, {column: 3, ascending: true}
+  ]);
+  updateNervousSummary(ss);
+  return nervousResult({ status: "success", complete, recordedScore: complete ? result.score : null, breakdown: result.breakdown });
+}
+
+function refreshNervousSummary() {
+  const lock = LockService.getScriptLock();
+  lock.waitLock(15000);
+  try {
+    updateNervousSummary(SpreadsheetApp.getActiveSpreadsheet());
+    SpreadsheetApp.flush();
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function updateNervousSummary(ss) {
+  const seats = new Map();
+  function seatEntry(cls, seat) {
+    const key = cls + "/" + seat;
+    if (!seats.has(key)) seats.set(key, { cls, seat, names: new Map(), groups: new Map(), absent: false });
+    return seats.get(key);
+  }
+  function scoreOf(value) {
+    return value === "" || value == null || !Number.isFinite(Number(value)) ? null : Number(value);
+  }
+  function schoolClass(value) {
+    return /^70[1-9]$|^710$/.test(value);
+  }
+
+  const attendance = ss.getSheetByName("出缺席紀錄");
+  const settings = new Map();
+  if (attendance && attendance.getLastRow() > 1) {
+    attendance.getRange(2, 2, attendance.getLastRow() - 1, 4).getValues().forEach(row => {
+      const cls = String(row[0]).trim();
+      if (String(row[1]).trim() === nervousAttendanceId() && schoolClass(cls)) settings.set(cls, row);
+    });
+  }
+  settings.forEach((row, cls) => {
+    const absent = nervousMembers(row[3]);
+    const count = Math.min(35, Math.max(0, Math.floor(Number(row[2]) || 0)));
+    for (let i = 1; i <= count; i++) seatEntry(cls, nervousSeat(i));
+    absent.forEach(seat => { seatEntry(cls, seat).absent = true; });
+  });
+  nervousRows(ss.getSheetByName(nervousSheetName("作答紀錄"))).forEach(row => {
+    const cls = String(row[1]).trim(), seat = nervousSeat(row[2]), name = String(row[3]).trim();
+    if (!schoolClass(cls) || !seat || !name) return;
+    const entry = seatEntry(cls, seat);
+    const score = scoreOf(row[5]);
+    const previous = entry.names.get(name);
+    if (previous == null || (score != null && score > previous)) entry.names.set(name, score);
+  });
+  nervousRows(ss.getSheetByName(nervousSheetName("小組作答紀錄"))).forEach(row => {
+    const cls = String(row[1]).trim(), group = nervousSeat(row[2]);
+    if (!schoolClass(cls) || !group) return;
+    const detail = nervousDetail(row[7]);
+    const score = detail.complete === false ? null : scoreOf(row[5]);
+    nervousMembers(row[3]).forEach(seat => seatEntry(cls, seat).groups.set(group, score));
+  });
+
+  const header = ["班級","座號","姓名","採計平均","個人最高分","小組成績","組別","狀態"];
+  const rows = Array.from(seats.values()).sort((a,b) => a.cls.localeCompare(b.cls) || a.seat.localeCompare(b.seat)).map(entry => {
+    const names = Array.from(entry.names.keys()), groups = Array.from(entry.groups.keys()).sort();
+    const individual = names.length === 1 ? entry.names.get(names[0]) : null;
+    const group = groups.length === 1 && names.length <= 1 ? entry.groups.get(groups[0]) : null;
+    const issues = [];
+    if (names.length > 1) issues.push("同座號多個姓名");
+    if (groups.length > 1) issues.push("組別重複");
+    if (entry.absent && (names.length || groups.length)) issues.push("請假／缺號有交卷");
+    const average = !issues.length && !entry.absent && individual != null && group != null ? (individual + group) / 2 : "";
+    const status = issues.length ? "待核對：" + issues.join("、") : entry.absent ? "請假／缺號" :
+      average !== "" ? "已完成" : individual == null && group == null ? "待繳" : individual == null ? "待個人作答" : "待小組完成";
+    return [entry.cls, entry.seat, names.join("／"), average, individual ?? "", group ?? "", groups.join("／"), status];
+  });
+
+  const cohort = nervousCohort();
+  const summaryName = "4-1 成績總覽" + (cohort ? "｜" + cohort : "");
+  let summary = ss.getSheetByName(summaryName);
+  if (!summary) {
+    summary = ss.insertSheet(summaryName, 0);
+    summary.setFrozenRows(1);
+    summary.getRange(1, 1, 1, header.length).setBackground("#1E3A8A").setFontColor("#FFFFFF").setFontWeight("bold");
+    summary.setColumnWidth(3, 150);
+    summary.setColumnWidth(8, 250);
+    summary.getRange(1, 1, summary.getMaxRows(), header.length).createFilter();
+    summary.getRange("B:B").setNumberFormat("@");
+    summary.getRange("D:D").setNumberFormat("0.##");
+  }
+  if (rows.length + 1 > summary.getMaxRows()) summary.insertRowsAfter(summary.getMaxRows(), rows.length + 1 - summary.getMaxRows());
+  const previousRows = summary.getLastRow();
+  summary.getRange(1, 1, rows.length + 1, header.length).setValues([header].concat(rows));
+  if (previousRows > rows.length + 1) {
+    summary.getRange(rows.length + 2, 1, previousRows - rows.length - 1, header.length).clearContent();
+  }
+}
+
+function scoreNervousGroup(detail) {
+  // 小組計分 (滿分 100 分)
+  let score = 0;
+  const breakdownList = [];
+
+  // 【任務一：中樞解剖座標認領 (共 32 分)】
+  const correctCenters = {
+    A: { name: "大腦", func: "意識與感覺思考運動", case: "中風半身不遂或失語" },
+    B: { name: "小腦", func: "協調骨骼肌維持平衡", case: "酒醉走路搖晃步伐不穩" },
+    C: { name: "腦幹", func: "心跳呼吸生命中樞", case: "昏迷呼吸停止腦死判定" },
+    D: { name: "脊髓", func: "軀幹四肢反射中樞", case: "小兒麻痺或下半身癱瘓" }
+  };
+
+  ["A", "B", "C", "D"].forEach(c => {
+    if (!detail.centers[c]) return;
+    const n = detail.centers[c].name;
+    const f = detail.centers[c].func;
+    const cs = detail.centers[c].case;
+    const cor = correctCenters[c];
+
+    if (n === cor.name && f === cor.func && cs === cor.case) {
+      score += 8;
+      breakdownList.push(`任務一中樞${c}(${cor.name})全對 (+8)`);
+    } else if (n === cor.name && (f === cor.func || cs === cor.case)) {
+      score += 5;
+      breakdownList.push(`任務一中樞${c}(${cor.name})部分正確 (+5)`);
+    }
+  });
+
+  // 【任務二：意識行為 vs 反射雙軌模型 (共 32 分)】
+  // 表一 (16分)
+  let t1Hits = 0;
+  if (detail.compare1.con_center === "大腦") t1Hits++;
+  if (detail.compare1.ref_center === "脊髓或腦幹") t1Hits++;
+  if (detail.compare1.con_path === "較長需經大腦分析") t1Hits++;
+  if (detail.compare1.ref_path === "極短不經大腦思考") t1Hits++;
+  if (detail.compare1.con_time === "時間長易受分心干擾") t1Hits++;
+  if (detail.compare1.ref_time === "極迅速且固定不變") t1Hits++;
+  if (detail.compare1.con_sign === "彈性學習因應複雜環境") t1Hits++;
+  if (detail.compare1.ref_sign === "緊急防禦爭取生機") t1Hits++;
+
+  score += t1Hits * 2;
+  if (t1Hits >= 6) breakdownList.push(`任務二比較表一機制大對決精準 (+${t1Hits*2})`);
+
+  // 表二 (16分)
+  if (detail.compare2.pull_center === "脊髓" && detail.compare2.pull_order === "先發生") {
+    score += 8; breakdownList.push("縮手反射先發生正確 (+8)");
+  }
+  if (detail.compare2.pain_center === "大腦" && detail.compare2.pain_order === "後發生") {
+    score += 8; breakdownList.push("大腦感到劇痛後發生正確 (+8)");
+  }
+
+  // 【任務三：交通安全實況危機模擬與宣言 (共 36 分)】
+  if (detail.traffic.t1_dist_calc === "約33公尺") {
+    score += 8; breakdownList.push("情境一安全車距計算精準 (+8)");
+  }
+  const t1Reason = String(detail.traffic.t1_dist_reason || "").trim();
+  if (t1Reason.length >= 8) {
+    score += 6; breakdownList.push("情境一車距意涵分析完整 (+6)");
+  }
+
+  const t2Alc = detail.traffic.t2_alcohol || [];
+  const t2Traps = ["增強視力夜視功能", "骨骼鈣質快速結晶硬化"];
+  const hasAlcTraps = t2Alc.some(item => t2Traps.includes(item));
+  if (t2Alc.includes("麻痺大腦判斷遲鈍") && t2Alc.includes("麻痺小腦步伐不穩") && t2Alc.includes("神經傳導延緩反應時間拉長") && !hasAlcTraps) {
+    score += 10; breakdownList.push("情境二酒駕神經毒性機制全對 (+10)");
+  } else if (!hasAlcTraps && t2Alc.length >= 2) {
+    score += 6; breakdownList.push("情境二酒駕分析部分正確 (+6)");
+  }
+
+  // 宣言 (12分)
+  const groupTrafficEssay = String(detail.traffic.group_traffic_essay || "").trim();
+  const essayWords = ["安全", "車距", "專注", "手機", "觀察", "防禦", "行人", "轉頭", "遵守", "提醒", "減速"];
+  const hasTrafficKeywords = essayWords.some(w => groupTrafficEssay.includes(w));
+  if (groupTrafficEssay.length >= 25 && hasTrafficKeywords) {
+    score += 12; breakdownList.push("情境三防禦性駕駛行動承諾深刻 (+12)");
+  } else if (groupTrafficEssay.length >= 8) {
+    score += 6; breakdownList.push("情境三行動承諾基本填寫 (+6)");
+  }
+
+  score = Math.min(100, score);
+
+  return { score: score, breakdown: breakdownList };
 }

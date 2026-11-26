@@ -818,6 +818,7 @@
     let currentLiveRecords = [];
     let currentSeatDataMap = new Map();
     let absentSeatsSet = new Set();
+    let currentNervousCohort = "";
     let localAttendanceCache = new Map(); // 班級出缺席與應到人數本地記憶防洗掉
     let isScoreHidden = false;
 
@@ -971,6 +972,12 @@
           currentLiveRecords = processed.cleanList;
           
           // 🛡️ 出缺席與人數狀態保全：若老師在本機編輯過尚未儲存，輪詢絕不覆蓋洗掉
+          if (unitVal === "4-1" && currentNervousCohort !== (data.cohort || "")) {
+            currentNervousCohort = data.cohort || "";
+            for (const key of localAttendanceCache.keys()) {
+              if (key.endsWith("_4-1")) localAttendanceCache.delete(key);
+            }
+          }
           const currentClassKey = `${classVal}_${unitVal}`;
           const localSaved = localAttendanceCache.get(currentClassKey);
           if (localSaved) {
