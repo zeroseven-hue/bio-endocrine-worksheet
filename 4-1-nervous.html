@@ -19,6 +19,13 @@
     .pupil-safety { margin: 0.75rem 0 0.5rem; padding: 0.75rem 1rem; border-left: 4px solid #d97706; border-radius: 8px; background: #fffbeb; color: #78350f; }
     .pupil-chart-intro { margin: 0 0 1rem; }
     .pupil-chart-note { margin: 0 0 0.5rem; color: #475569; font-size: 0.85rem; }
+    .nerve-atlas { background: #faf2e5; }
+    .nerve-atlas-brain, .nerve-atlas-inset { position: relative; }
+    .nerve-atlas img { display: block; width: 100%; height: auto; }
+    .nerve-atlas-inset { width: 61%; margin: -5% auto 4%; aspect-ratio: 2 / 1; overflow: hidden; border: 1px solid #cbd5e1; border-radius: 8px; }
+    .nerve-atlas-inset img { height: 100%; object-fit: cover; }
+    .nerve-atlas .img-hotspot { padding: 0; border: 0; background: transparent; }
+    .nerve-atlas .img-hotspot:focus-visible { outline: 3px solid #0f172a; outline-offset: 2px; }
   </style>
 </head>
 <body>
@@ -715,66 +722,28 @@
               </div>
             </div>
 
-            <!-- 解剖分區導覽圖 ＋ 科技藍光互動熱點按鈕 -->
-            <div class="human-img-stage" style="background: radial-gradient(circle, #1e293b 0%, #0f172a 100%);">
-              <!-- SVG 人腦與脊髓解剖幾何示意圖 -->
-              <svg viewBox="0 0 400 480" class="nerve-svg-map" style="width: 100%; height: 100%; max-height: 420px; display: block; margin: 0 auto;">
-                <defs>
-                  <linearGradient id="cerebrumGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                    <stop offset="0%" stop-color="#c084fc"/>
-                    <stop offset="100%" stop-color="#7c3aed"/>
-                  </linearGradient>
-                  <linearGradient id="cerebellumGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                    <stop offset="0%" stop-color="#a855f7"/>
-                    <stop offset="100%" stop-color="#7e22ce"/>
-                  </linearGradient>
-                  <linearGradient id="stemGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                    <stop offset="0%" stop-color="#f59e0b"/>
-                    <stop offset="100%" stop-color="#b45309"/>
-                  </linearGradient>
-                  <linearGradient id="cordGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                    <stop offset="0%" stop-color="#10b981"/>
-                    <stop offset="100%" stop-color="#047857"/>
-                  </linearGradient>
-                </defs>
-                <!-- 大腦 Cerebrum 輪廓 -->
-                <path d="M 120 180 C 90 140 100 80 180 60 C 260 40 320 80 320 160 C 320 210 270 230 220 230 C 180 230 140 210 120 180 Z" fill="url(#cerebrumGrad)" opacity="0.85" stroke="#bae6fd" stroke-width="2"/>
-                <!-- 小腦 Cerebellum 輪廓 -->
-                <ellipse cx="260" cy="260" rx="45" ry="32" fill="url(#cerebellumGrad)" opacity="0.85" stroke="#e9d5ff" stroke-width="2"/>
-                <!-- 腦幹 Brainstem 輪廓 -->
-                <path d="M 195 210 L 225 210 L 220 290 L 195 290 Z" fill="url(#stemGrad)" opacity="0.85" stroke="#fde68a" stroke-width="2"/>
-                <!-- 脊髓 Spinal Cord 輪廓 -->
-                <rect x="200" y="290" width="18" height="150" rx="8" fill="url(#cordGrad)" opacity="0.85" stroke="#a7f3d0" stroke-width="2"/>
-                
-                <!-- 裝飾導線 -->
-                <line x1="210" y1="120" x2="350" y2="110" stroke="#c084fc" stroke-dasharray="3,3"/>
-                <line x1="280" y1="260" x2="350" y2="230" stroke="#c084fc" stroke-dasharray="3,3"/>
-                <line x1="210" y1="250" x2="110" y2="250" stroke="#fbbf24" stroke-dasharray="3,3"/>
-                <line x1="210" y1="360" x2="110" y2="360" stroke="#34d399" stroke-dasharray="3,3"/>
-              </svg>
-
-              <!-- 熱點 A: 大腦 -->
-              <div class="img-hotspot active-target" id="hotspotA" data-center="A" style="top: 24%; left: 82%;">
-                <span class="hotspot-pulse"></span>
-                <span class="hotspot-badge">A</span>
+            <div class="human-img-stage nerve-atlas">
+              <div class="nerve-atlas-brain">
+                <img src="assets/nerve-brain-atlas.webp" width="512" height="512" alt="腦部側視插圖，標出 A、B、C 三個區域">
+                <button type="button" class="img-hotspot active-target" id="hotspotA" data-center="A" style="top:38%; left:54%;" aria-label="分區 A">
+                  <span class="hotspot-pulse" aria-hidden="true"></span>
+                  <span class="hotspot-badge">A</span>
+                </button>
+                <button type="button" class="img-hotspot" id="hotspotB" data-center="B" style="top:69%; left:73%;" aria-label="分區 B">
+                  <span class="hotspot-pulse" aria-hidden="true"></span>
+                  <span class="hotspot-badge">B</span>
+                </button>
+                <button type="button" class="img-hotspot" id="hotspotC" data-center="C" style="top:73%; left:52%;" aria-label="分區 C">
+                  <span class="hotspot-pulse" aria-hidden="true"></span>
+                  <span class="hotspot-badge">C</span>
+                </button>
               </div>
-
-              <!-- 熱點 B: 小腦 -->
-              <div class="img-hotspot" id="hotspotB" data-center="B" style="top: 48%; left: 82%;">
-                <span class="hotspot-pulse"></span>
-                <span class="hotspot-badge">B</span>
-              </div>
-
-              <!-- 熱點 C: 腦幹 -->
-              <div class="img-hotspot" id="hotspotC" data-center="C" style="top: 52%; left: 22%;">
-                <span class="hotspot-pulse"></span>
-                <span class="hotspot-badge">C</span>
-              </div>
-
-              <!-- 熱點 D: 脊髓 -->
-              <div class="img-hotspot" id="hotspotD" data-center="D" style="top: 75%; left: 22%;">
-                <span class="hotspot-pulse"></span>
-                <span class="hotspot-badge">D</span>
+              <div class="nerve-atlas-inset">
+                <img src="assets/nerve-spinal-atlas.webp" width="512" height="512" alt="神經中樞橫切面插圖，標出 D 區域">
+                <button type="button" class="img-hotspot" id="hotspotD" data-center="D" style="top:50%; left:50%;" aria-label="分區 D">
+                  <span class="hotspot-pulse" aria-hidden="true"></span>
+                  <span class="hotspot-badge">D</span>
+                </button>
               </div>
             </div>
             <div class="viewer-tip">👆 點擊圖上光點 A~D，即可在右側切換對應中樞之小組認領任務卡</div>
