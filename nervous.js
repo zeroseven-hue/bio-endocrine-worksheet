@@ -17,16 +17,17 @@ let currentMode = "individual"; // "individual" | "group"
 let currentStep = 1;
 let currentCenter = "A";
 let autoSaveTimer = null;
+let isUploading = false;
+let isResetting = false;
+let resultMode = null;
 
 // ==================== 1. 初始化班級座號與事件掛載 ====================
 document.addEventListener("DOMContentLoaded", () => {
   // 4.5 檢查 URL 是否帶有重置指令 (?reset=1 或 ?fresh=1)
   const urlParams = new URLSearchParams(window.location.search);
   if (urlParams.get('reset') === '1' || urlParams.get('fresh') === '1') {
-    localStorage.removeItem(STORAGE_KEY_INDIV);
-    localStorage.removeItem(STORAGE_KEY_GROUP);
-    localStorage.removeItem(STORAGE_KEY_SUBMIT_INDIV);
-    localStorage.removeItem(STORAGE_KEY_SUBMIT_GROUP);
+    clearWorksheetDraft("individual");
+    clearWorksheetDraft("group");
     localStorage.removeItem('BIO_4_1_LAST_TIMESTAMP');
     window.history.replaceState({}, document.title, window.location.pathname);
   }
@@ -41,6 +42,7 @@ document.addEventListener("DOMContentLoaded", () => {
   bindInputListeners();
   initReactionChart();
   loadSavedData();
+  renderReactionChart();
   updateStepperCheckmarks();
   updateCenterNodeStatus();
   initExitGuard();
@@ -189,6 +191,7 @@ function bindModeSwitching() {
   const groupMembersSlot = document.getElementById("groupMembersSlot");
 
   tabIndiv.addEventListener("click", () => {
+    flushAutoSave();
     currentMode = "individual";
     localStorage.setItem("BIO_ACTIVE_MODE_4_1", "individual");
     tabIndiv.classList.add("active");
@@ -203,6 +206,7 @@ function bindModeSwitching() {
   });
 
   tabGroup.addEventListener("click", () => {
+    flushAutoSave();
     currentMode = "group";
     localStorage.setItem("BIO_ACTIVE_MODE_4_1", "group");
     tabGroup.classList.add("active");
@@ -231,7 +235,7 @@ function bindModeSwitching() {
     });
   }
 
-  // 學生姓名 2~5 字即時校驗（相容雙字單名，封殺純英數）
+  // 學生姓名 2～5 字即時校驗（相容雙字單名，封殺純英數）
   const studentNameInput = document.getElementById("studentName");
   const nameFeedback = document.getElementById("nameFeedback");
   if (studentNameInput) {
@@ -248,7 +252,7 @@ function bindModeSwitching() {
         nameFeedback.textContent = "✓ 姓名格式正確";
         nameFeedback.className = "input-feedback valid";
       } else {
-        nameFeedback.textContent = "⚠️ 請填寫 2~5 字中文真實姓名，嚴禁英數或暱稱";
+        nameFeedback.textContent = "⚠️ 請填寫 2～5 字中文真實姓名，嚴禁英數或暱稱";
         nameFeedback.className = "input-feedback error";
       }
     });
@@ -452,7 +456,7 @@ function bindInputListeners() {
   const btnModalFresh = document.getElementById("btnModalFreshStudent");
   if (btnModalFresh) {
     btnModalFresh.addEventListener("click", () => {
-      startFreshBioQuiz();
+      startFreshBioQuiz(resultMode);
     });
   }
 }
@@ -460,7 +464,7 @@ function bindInputListeners() {
 function triggerAutoSave() {
   clearTimeout(autoSaveTimer);
   autoSaveTimer = setTimeout(() => {
-    saveCurrentData();
+    flushAutoSave();
     const pill = document.getElementById("autoSaveBadge");
     if (pill) {
       pill.style.background = "#bbf7d0";
@@ -469,8 +473,15 @@ function triggerAutoSave() {
   }, 400);
 }
 
-function saveCurrentData() {
-  // 1. 個人資料
+function flushAutoSave() {
+  if (autoSaveTimer === null) return;
+  clearTimeout(autoSaveTimer);
+  autoSaveTimer = null;
+  if (currentMode === "individual") saveIndividualDraft();
+  else saveGroupDraft();
+}
+
+function saveIndividualDraft() {
   const indivPayload = {
     class: document.getElementById("studentClass").value,
     seat: document.getElementById("studentSeat").value,
@@ -492,6 +503,7 @@ function saveCurrentData() {
     q4_reaction_def: document.getElementById("q4_reaction_def").value,
     q4_diff_variation: document.getElementById("q4_diff_variation").value,
     q4_time_compare: document.getElementById("q4_time_compare").value,
+    rulerValues: [1, 2, 3, 4, 5].map(index => document.getElementById("rulerVal" + index).value),
     q4_rs: Array.from(document.querySelectorAll('input[name="q4_rs"]:checked')).map(cb => cb.value),
     q5_bio_factor: document.getElementById("q5_bio_factor").value,
     q5_phy_factor: document.getElementById("q5_phy_factor").value,
@@ -499,9 +511,11 @@ function saveCurrentData() {
     q5_pedestrian_essay: document.getElementById("q5_pedestrian_essay").value
   };
   localStorage.setItem(STORAGE_KEY_INDIV, JSON.stringify(indivPayload));
-  localStorage.setItem('BIO_4_1_LAST_TIMESTAMP', String(Date.now()));
+  localStorage.setItem(STORAGE_KEY_INDIV + "_UPDATED_AT", String(Date.now()));
+  return indivPayload;
+}
 
-  // 2. 小組資料
+function saveGroupDraft() {
   const groupPayload = {
     class: document.getElementById("groupClass").value,
     groupNum: document.getElementById("groupNum").value,
@@ -561,7 +575,8 @@ function saveCurrentData() {
     }
   };
   localStorage.setItem(STORAGE_KEY_GROUP, JSON.stringify(groupPayload));
-  localStorage.setItem('BIO_4_1_LAST_TIMESTAMP', String(Date.now()));
+  localStorage.setItem(STORAGE_KEY_GROUP + "_UPDATED_AT", String(Date.now()));
+  return groupPayload;
 }
 
 function loadSavedData() {
@@ -590,6 +605,11 @@ function loadSavedData() {
       if (data.q2_neu) {
         document.querySelectorAll('input[name="q2_neu"]').forEach(cb => {
           cb.checked = data.q2_neu.includes(cb.value);
+        });
+      }
+      if (Array.isArray(data.rulerValues)) {
+        data.rulerValues.slice(0, 5).forEach((value, index) => {
+          document.getElementById("rulerVal" + (index + 1)).value = value;
         });
       }
       if (data.q4_rs) {
@@ -678,6 +698,7 @@ function loadSavedData() {
 
 // ==================== 6. 客觀評分引擎與作答提交驗證 ====================
 function handleSubmitIndividual() {
+  if (isUploading) return;
   const cls = document.getElementById("studentClass").value;
   const seat = document.getElementById("studentSeat").value;
   const name = document.getElementById("studentName").value.trim();
@@ -690,7 +711,7 @@ function handleSubmitIndividual() {
 
   const validChineseRegex = /^[\u4e00-\u9fa5]{2,5}$/;
   if (!validChineseRegex.test(name)) {
-    alert("⚠️ 請輸入 2~5 字真實中文姓名！\n\n依課堂規定，非真實姓名（如暱稱、純英文數字等）本學習單將扣 10 分。");
+    alert("⚠️ 請輸入 2～5 字真實中文姓名！\n\n依課堂規定，非真實姓名（如暱稱、純英文數字等）本學習單將扣 10 分。");
     document.getElementById("studentName").focus();
     return;
   }
@@ -720,10 +741,11 @@ function handleSubmitIndividual() {
 }
 
 function executeFinalSubmitIndividual(cls, seat, name) {
+  if (isUploading) return;
   // 檢查是否重複提交
   const existingSubmission = localStorage.getItem(STORAGE_KEY_SUBMIT_INDIV);
   if (existingSubmission) {
-    const confirmOverwrite = confirm("⚠️ 系統偵測到您先前已提交過成績！\n\n再次送出將會更新雲端最高分紀錄，確定要重新繳交嗎？");
+    const confirmOverwrite = confirm("⚠️ 系統偵測到您先前已提交過成績！\n\n再次送出可能更新雲端作答紀錄，確定要重新繳交嗎？");
     if (!confirmOverwrite) return;
   }
 
@@ -826,7 +848,7 @@ function executeFinalSubmitIndividual(cls, seat, name) {
     score: score,
     scoreBreakdown: breakdownList,
     essay: pedestrianEssay,
-    detailData: JSON.parse(localStorage.getItem(STORAGE_KEY_INDIV) || "{}"),
+    detailData: saveIndividualDraft(),
     timestamp: new Date().toLocaleString("zh-TW", { timeZone: "Asia/Taipei" })
   };
 
@@ -835,6 +857,7 @@ function executeFinalSubmitIndividual(cls, seat, name) {
 
 /** 小組模式提交與防呆驗證 */
 function handleSubmitGroup() {
+  if (isUploading) return;
   const cls = document.getElementById("groupClass").value;
   const groupNum = document.getElementById("groupNum").value;
   const members = getSelectedGroupMembers();
@@ -845,8 +868,10 @@ function handleSubmitGroup() {
     return;
   }
 
-  if (members.length < 3) {
-    alert("⚠️ 請至少設定 3 位出席組員的座號！");
+  const groupSize = Number(document.getElementById("groupSize").value);
+  if (members.length !== groupSize) {
+    alert(`⚠️ 請填齊 ${groupSize} 位出席組員的座號。每位組員的座號都必須不同。`);
+    document.getElementById("groupMembersSlot").scrollIntoView({ behavior: "smooth" });
     return;
   }
 
@@ -869,7 +894,7 @@ function handleSubmitGroup() {
 
   const existingGroupSubmission = localStorage.getItem(STORAGE_KEY_SUBMIT_GROUP);
   if (existingGroupSubmission) {
-    const confirmOverwrite = confirm("⚠️ 系統偵測到本組先前已繳交過報告！\n\n再次送出將會更新雲端最高分紀錄，確定要重新繳交嗎？");
+    const confirmOverwrite = confirm("⚠️ 系統偵測到本組先前已繳交過報告！\n\n再次送出可能更新雲端作答紀錄，確定要重新繳交嗎？");
     if (!confirmOverwrite) return;
   }
 
@@ -965,100 +990,78 @@ function handleSubmitGroup() {
     score: score,
     scoreBreakdown: breakdownList,
     essay: groupTrafficEssay || "小組交通安全模型完成",
-    detailData: JSON.parse(localStorage.getItem(STORAGE_KEY_GROUP) || "{}"),
+    detailData: saveGroupDraft(),
     timestamp: new Date().toLocaleString("zh-TW", { timeZone: "Asia/Taipei" })
   };
 
   sendToGAS(payload, score);
 }
 
-// ==================== 7. 後端 GAS 傳送 ＋ 8 秒降級機制 ====================
-function sendToGAS(payload, score) {
-  const modal = document.getElementById("resultModal");
-  const scoreVal = document.getElementById("scoreVal");
-  const scoreStatus = document.getElementById("scoreStatus");
-  const detailsBox = document.getElementById("resultDetailsBox");
+// ==================== 7. 後端 GAS 傳送 ====================
+async function sendToGAS(payload, score) {
+  if (isUploading) return;
+  isUploading = true;
+  resultMode = payload.mode;
+  const isIndividual = payload.mode === "individual";
+  const submitButton = document.getElementById(isIndividual ? "btnConfirmSubmit" : "btnSubmitGroup");
+  const modalButtons = [document.getElementById("btnModalClose"), document.getElementById("btnModalFreshStudent")];
+  const buttons = [submitButton, ...modalButtons].filter(Boolean);
+  buttons.forEach(button => { button.disabled = true; });
 
-  scoreVal.textContent = score;
-  modal.classList.remove("hidden");
+  const status = document.getElementById("scoreStatus");
+  const details = document.getElementById("resultDetailsBox");
+  const identity = `${payload.class} 班 ${payload.seatOrGroup} ｜ ${payload.nameOrMembers}`;
+  const uploading = "⏳ 成績上傳中，請勿關閉視窗...";
+  const submitLabel = submitButton && (submitButton.querySelector(".btn-text") || submitButton);
+  const originalLabel = submitLabel?.textContent;
+  if (submitLabel) submitLabel.textContent = uploading;
+  document.getElementById("scoreVal").textContent = score;
+  status.textContent = uploading;
+  details.textContent = `${isIndividual ? "個人學習單" : "小組學習單"} ｜ ${identity}`;
+  document.getElementById("resultModal").classList.remove("hidden");
 
-  scoreStatus.textContent = "📡 正在向課堂伺服器同步成績，請稍候...";
-  detailsBox.innerHTML = `
-    <div><strong>單元：</strong>【單元 4-1】神經系統 ✕ 交通安全</div>
-    <div><strong>作答模式：</strong>${payload.mode === "individual" ? "個人學習單" : "小組學習單"}</div>
-    <div><strong>身分：</strong>${payload.class} 班 ${payload.seatOrGroup} ｜ ${payload.nameOrMembers}</div>
-    <div style="margin-top:6px; color:#7c3aed;">正在建立加密通道送出作答數據...</div>
-  `;
-
-  let isHandled = false;
-  const timeoutId = setTimeout(() => {
-    if (!isHandled) {
-      isHandled = true;
-      scoreStatus.textContent = "⚠️ 學校 Wi-Fi 塞車延遲，成績已為您快照備份！";
-      detailsBox.innerHTML += `
-        <div style="margin-top:8px; padding:8px; background:#fef3c7; border-radius:6px; color:#92400e;">
-          <strong>備援通報：</strong>校園網路稍有雍塞，您的成績 (${score}分) 已安全快照留存於此平板中。<br>
-          請直接向任課生物老師出示本畫面進行手動核對登記即可！
-        </div>
-      `;
-    }
-  }, 8000);
-
-  if (!GAS_URL || GAS_URL === "YOUR_GAS_EXEC_URL") {
-    clearTimeout(timeoutId);
-    isHandled = true;
-    setTimeout(() => {
-      scoreStatus.textContent = "✅ 本地批改完成（尚未配置 GAS_URL）";
-      detailsBox.innerHTML += `
-        <div style="margin-top:6px; color:#16a34a;"><strong>客觀評分診斷清單：</strong><br>${payload.scoreBreakdown.join("<br>")}</div>
-      `;
-    }, 600);
-    return;
-  }
-
-  fetch(GAS_URL, {
-    method: "POST",
-    mode: "no-cors",
-    headers: { "Content-Type": "text/plain;charset=utf-8" },
-    body: JSON.stringify(payload)
-  })
-    .then(() => {
-      clearTimeout(timeoutId);
-      if (!isHandled) {
-        isHandled = true;
-        scoreStatus.textContent = "🎉 成績與作答紀錄已成功同步上傳！";
-        detailsBox.innerHTML += `
-          <div style="margin-top:6px; color:#16a34a;"><strong>雲端診斷清單：</strong><br>${payload.scoreBreakdown.join("<br>")}</div>
-        `;
-        const key = payload.mode === "individual" ? STORAGE_KEY_SUBMIT_INDIV : STORAGE_KEY_SUBMIT_GROUP;
-        localStorage.setItem(key, JSON.stringify({
-          timestamp: payload.timestamp,
-          score: score,
-          target: `${payload.class}班 ${payload.seatOrGroup}`
-        }));
-        localStorage.setItem('BIO_4_1_LAST_TIMESTAMP', String(Date.now()));
-      }
-    })
-    .catch(err => {
-      clearTimeout(timeoutId);
-      if (!isHandled) {
-        isHandled = true;
-        scoreStatus.textContent = "⚠️ 雲端傳送遇到微小干擾，但本地已安全存檔！";
-        detailsBox.innerHTML += `
-          <div style="margin-top:6px; color:#ea580c;">請保持此畫面，向任課老師回報成績 (${score}分)。</div>
-        `;
-      }
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 8000);
+  try {
+    await fetch(GAS_URL, {
+      method: "POST",
+      mode: "no-cors",
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: JSON.stringify(payload),
+      signal: controller.signal
     });
+    const key = isIndividual ? STORAGE_KEY_SUBMIT_INDIV : STORAGE_KEY_SUBMIT_GROUP;
+    localStorage.setItem(key, JSON.stringify({
+      timestamp: payload.timestamp,
+      score,
+      target: `${payload.class}班 ${payload.seatOrGroup}`
+    }));
+    status.textContent = "📡 已送出上傳請求，實際收件以老師的試算表為準。";
+    const breakdown = document.createElement("p");
+    breakdown.textContent = payload.scoreBreakdown.join("、");
+    details.appendChild(breakdown);
+  } catch {
+    status.textContent = "⚠️ 無法確認上傳結果。請保留此畫面，向老師核對分數後再決定是否重送。";
+  } finally {
+    clearTimeout(timeout);
+    isUploading = false;
+    buttons.forEach(button => { button.disabled = false; });
+    if (submitLabel) submitLabel.textContent = originalLabel;
+  }
 }
 
 // ==================== 8. 防呆與離頁守護機制 ====================
 function initExitGuard() {
-  window.addEventListener("beforeunload", (e) => {
-    const indSubmit = localStorage.getItem(STORAGE_KEY_SUBMIT_INDIV);
-    const grpSubmit = localStorage.getItem(STORAGE_KEY_SUBMIT_GROUP);
-    if (!indSubmit && !grpSubmit) {
-      e.preventDefault();
-      e.returnValue = "您尚有未提交的學習單內容，確定要離開嗎？";
+  window.addEventListener("pagehide", flushAutoSave);
+  window.addEventListener("beforeunload", (event) => {
+    if (isResetting) return;
+    flushAutoSave();
+    const isIndividual = currentMode === "individual";
+    const draft = localStorage.getItem(isIndividual ? STORAGE_KEY_INDIV : STORAGE_KEY_GROUP);
+    const submitted = localStorage.getItem(isIndividual ? STORAGE_KEY_SUBMIT_INDIV : STORAGE_KEY_SUBMIT_GROUP);
+    if (isUploading || (draft && !submitted)) {
+      event.preventDefault();
+      event.returnValue = "";
     }
   });
 }
@@ -1091,6 +1094,12 @@ function initReactionChart() {
     }
   });
 
+  document.getElementById("restoreRulerExample").addEventListener("click", () => {
+    inputs.forEach(input => { input.value = input.defaultValue; });
+    renderReactionChart();
+    triggerAutoSave();
+  });
+
   renderReactionChart();
 }
 
@@ -1102,14 +1111,14 @@ function renderReactionChart() {
   const r5 = parseFloat(document.getElementById("rulerVal5")?.value) || 0.18;
 
   const rulerData = [r1, r2, r3, r4, r5];
-  // 瞳孔反射天生固定且短暫，5 次皆約為 0.08 秒
+  // 人工設定的教學比較線，非實驗量測
   const pupilData = [0.08, 0.08, 0.08, 0.08, 0.08];
 
   const xCoords = [100, 195, 290, 385, 480];
-  // Y 軸 0.00s 處在 y=195, 0.40s 處在 y=35 (高度 160px，即每 0.1s 佔 40px)
+  // Y 軸 0.00s 處在 y=195, 0.50s 處在 y=35（每 0.1s 佔 32px）
   const getY = (val) => {
-    const clamped = Math.max(0, Math.min(0.42, val));
-    return 195 - (clamped / 0.40) * 160;
+    const clamped = Math.max(0, Math.min(0.50, val));
+    return 195 - (clamped / 0.50) * 160;
   };
 
   // 1. 構建接尺折線與漸層區域
@@ -1178,22 +1187,25 @@ function renderReactionChart() {
 }
 
 // ==================== 10. 跑班推車防呆核心函式 (超時/門禁/換人清空) ====================
+function clearWorksheetDraft(mode) {
+  const isIndividual = mode === "individual";
+  const draftKey = isIndividual ? STORAGE_KEY_INDIV : STORAGE_KEY_GROUP;
+  localStorage.removeItem(draftKey);
+  localStorage.removeItem(draftKey + "_UPDATED_AT");
+  localStorage.removeItem(isIndividual ? STORAGE_KEY_SUBMIT_INDIV : STORAGE_KEY_SUBMIT_GROUP);
+  if (!isIndividual) localStorage.removeItem("BIO_ACTIVE_GROUP_TAB_4_1");
+}
+
 function checkBioSessionTimeout() {
-  const lastTimeRaw = localStorage.getItem('BIO_4_1_LAST_TIMESTAMP');
-  if (!lastTimeRaw) return;
-  const lastTime = parseInt(lastTimeRaw, 10);
-  const diffMinutes = (Date.now() - lastTime) / (1000 * 60);
-  if (diffMinutes > 40) {
-    console.log('[Bio Session Guard] 距離上次填寫超過 40 分鐘，自動清空上一班暫存');
-    localStorage.removeItem(STORAGE_KEY_INDIV);
-    localStorage.removeItem(STORAGE_KEY_GROUP);
-    localStorage.removeItem(STORAGE_KEY_SUBMIT_INDIV);
-    localStorage.removeItem(STORAGE_KEY_SUBMIT_GROUP);
-    localStorage.removeItem('BIO_4_1_LAST_TIMESTAMP');
+  const legacyTime = localStorage.getItem("BIO_4_1_LAST_TIMESTAMP");
+  for (const [mode, draftKey] of [["individual", STORAGE_KEY_INDIV], ["group", STORAGE_KEY_GROUP]]) {
+    const lastTime = Number(localStorage.getItem(draftKey + "_UPDATED_AT") || legacyTime);
+    if (lastTime && Date.now() - lastTime > 40 * 60 * 1000) clearWorksheetDraft(mode);
   }
 }
 
 function checkBioStudentIdentityAndStatus() {
+  if (currentMode !== "individual") return;
   const indivRaw = localStorage.getItem(STORAGE_KEY_INDIV);
   const submittedRaw = localStorage.getItem(STORAGE_KEY_SUBMIT_INDIV);
   
@@ -1231,9 +1243,9 @@ function showBioIdentityModal(studentDesc, isSubmitted) {
       <p style="color:#64748b;font-size:0.95rem;margin-bottom:1.2rem;">本平板留存上一位同學的作答紀錄：</p>
       
       <div style="background:#f5f3ff;border:2px dashed #c4b5fd;border-radius:14px;padding:1.1rem;margin-bottom:1.5rem;">
-        <span style="font-size:1.3rem;font-weight:900;color:#6d28d9;">${studentDesc}</span>
+        <span style="font-size:1.3rem;font-weight:900;color:#6d28d9;"id="bioPreviousStudent"></span>
         <div style="font-size:0.85rem;color:#7c3aed;margin-top:0.3rem;">
-          ${isSubmitted ? '✅ 該生已成功完成交卷' : '📝 該生尚有填寫中之草稿'}
+          ${isSubmitted ? '📡 該生已送出交卷請求' : '📝 該生尚有填寫中之草稿'}
         </div>
       </div>
 
@@ -1241,21 +1253,24 @@ function showBioIdentityModal(studentDesc, isSubmitted) {
         <button type="button" onclick="document.getElementById('bioIdentityModal').remove()" style="padding:0.85rem;background:#7c3aed;color:#fff;font-weight:800;border:none;border-radius:12px;font-size:1rem;cursor:pointer;">
           🙋‍♂️ 我就是該位同學（繼續作答/檢視）
         </button>
-        <button type="button" onclick="startFreshBioQuiz(true)" style="padding:0.85rem;background:#fee2e2;color:#dc2626;font-weight:800;border:1.5px solid #fca5a5;border-radius:12px;font-size:0.95rem;cursor:pointer;">
+        <button type="button" id="btnIdentityFresh" style="padding:0.85rem;background:#fee2e2;color:#dc2626;font-weight:800;border:1.5px solid #fca5a5;border-radius:12px;font-size:0.95rem;cursor:pointer;">
           🔄 不是我，我是新同學（清空上一位，開始全新作答）
         </button>
       </div>
     </div>
   `;
+  modal.querySelector("#bioPreviousStudent").textContent = studentDesc;
+  modal.querySelector("#btnIdentityFresh").onclick = () => startFreshBioQuiz("individual", true);
 }
 
-function startFreshBioQuiz(skipConfirm) {
-  if (skipConfirm || confirm("確定要開始全新作答嗎？\n\n（這將清空此平板畫面上留存的上一位座號與答案，前一位同學已送出的成績不受影響）")) {
-    localStorage.removeItem(STORAGE_KEY_INDIV);
-    localStorage.removeItem(STORAGE_KEY_GROUP);
-    localStorage.removeItem(STORAGE_KEY_SUBMIT_INDIV);
-    localStorage.removeItem(STORAGE_KEY_SUBMIT_GROUP);
-    localStorage.removeItem('BIO_4_1_LAST_TIMESTAMP');
-    location.reload();
-  }
+function startFreshBioQuiz(mode, skipConfirm = false) {
+  if (isUploading || !mode) return;
+  if (!skipConfirm && !confirm("開始全新作答？這將清除本次作答模式的本地暫存資料。")) return;
+  isResetting = true;
+  if (currentMode !== mode) flushAutoSave();
+  clearTimeout(autoSaveTimer);
+  autoSaveTimer = null;
+  clearWorksheetDraft(mode);
+  localStorage.setItem("BIO_ACTIVE_MODE_4_1", mode);
+  location.reload();
 }

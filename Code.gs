@@ -94,6 +94,7 @@ function doGet(e) {
 }
 
 function doPost(e) {
+  var groupLock;
   try {
     if (!e || !e.postData || !e.postData.contents) {
       return ContentService.createTextOutput(JSON.stringify({
@@ -203,8 +204,13 @@ function doPost(e) {
       }
     }
 
-    // 模式 C：學生送出作答 或 教師手動補登成績 (具備姓名絕對保全與防洗板原地更新機制)
-    var sheetName = "單元" + sheetId + "作答紀錄";
+    // 模式 C：學生送出作答 或 教師手動補登成績
+    var isNervousGroup = sheetId === "4-1" && data.mode === "group";
+    if (isNervousGroup) {
+      groupLock = LockService.getScriptLock();
+      groupLock.waitLock(10000);
+    }
+    var sheetName = "單元" + sheetId + (isNervousGroup ? "小組作答紀錄" : "作答紀錄");
     var sheet = ss.getSheetByName(sheetName);
     var isNewSheet = false;
 
@@ -247,13 +253,13 @@ function doPost(e) {
       var existingData = sheet.getRange(2, 2, sheet.getLastRow() - 1, 3).getValues(); // 班級(欄2), 座號(欄3), 姓名(欄4)
       for (var r = 0; r < existingData.length; r++) {
         var rowClass = String(existingData[r][0]).trim();
-        var rowSeatNum = parseInt(existingData[r][1], 10);
+        var rowSeatNum = parseInt(String(existingData[r][1]).trim().replace(/^'/, ""), 10);
         var rowSeatStr = (!isNaN(rowSeatNum) && rowSeatNum > 0) ? String(rowSeatNum).padStart(2, '0') : String(existingData[r][1]).trim();
         var rowName = String(existingData[r][2] || "").trim();
 
         if (rowClass === targetClass) {
-          if (isManualGrade) {
-            // 教師手動補登：座號相同即更新
+          if (isNervousGroup || isManualGrade) {
+            // 小組依組別重交，教師補登依座號更新。
             if (rowSeatStr === targetSeat) {
               existingRowIndex = r + 2;
               break;
@@ -311,6 +317,14 @@ function doPost(e) {
       status: "error",
       message: error.toString()
     })).setMimeType(ContentService.MimeType.JSON);
+  } finally {
+    if (groupLock && groupLock.hasLock()) {
+      try {
+        SpreadsheetApp.flush();
+      } finally {
+        groupLock.releaseLock();
+      }
+    }
   }
 }
 

@@ -11,6 +11,15 @@
 
 
 
+  <style>
+    .worksheet-mode-controls { max-width: 100%; }
+    .worksheet-flow { margin: 0.45rem 0 0; color: #e2e8f0; font-size: 0.8rem; }
+    .pupil-video { max-width: 640px; aspect-ratio: 16 / 9; margin: 0.75rem auto; overflow: hidden; border-radius: 12px; background: #0f172a; }
+    .pupil-video iframe { display: block; width: 100%; height: 100%; border: 0; }
+    .pupil-safety { margin: 0.75rem 0 0.5rem; padding: 0.75rem 1rem; border-left: 4px solid #d97706; border-radius: 8px; background: #fffbeb; color: #78350f; }
+    .pupil-chart-intro { margin: 0 0 1rem; }
+    .pupil-chart-note { margin: 0 0 0.5rem; color: #475569; font-size: 0.85rem; }
+  </style>
 </head>
 <body>
   <!-- 頁首 Header 導航 -->
@@ -25,7 +34,8 @@
       </div>
 
       <!-- 模式切換 Switcher -->
-      <div class="mode-switcher-wrap">
+      <div class="worksheet-mode-controls">
+      <div class="mode-switcher-wrap" role="group" aria-label="學習單模式" aria-describedby="worksheetFlow">
         <button type="button" class="mode-tab active" id="tabIndividual" data-mode="individual">
           <span class="mode-icon">👤</span>
           <span class="mode-text">個人學習單</span>
@@ -36,6 +46,8 @@
           <span class="mode-text">小組學習單</span>
           <span class="status-indicator"></span>
         </button>
+      </div>
+      <p class="worksheet-flow" id="worksheetFlow">📌 建議流程：請先完成【個人學習單】並送出成績後，再切換至【小組學習單】進行組員認領與討論。</p>
       </div>
     </div>
   </header>
@@ -79,7 +91,7 @@
         <div class="form-group flex-2">
           <label for="studentName"><span class="req">*</span> 學生真實姓名 <span style="color: #ef4444; font-size: 0.82rem; font-weight: 700;">（⚠️ 嚴禁暱稱！非真實姓名本學習單直接扣 10 分）</span></label>
           <div class="input-wrapper">
-            <input type="text" id="studentName" class="cyber-input" placeholder="請輸入 2~5 字中文全名（如：陳立、王小明）" maxlength="5" autocomplete="off">
+            <input type="text" id="studentName" class="cyber-input" placeholder="請輸入 2～5 字中文全名（如：陳立、王小明）" maxlength="5" autocomplete="off">
             <span class="input-feedback" id="nameFeedback"></span>
           </div>
         </div>
@@ -414,20 +426,28 @@
             <h2>反應時間的測定 ｜ 接尺實驗 vs 瞳孔反射數據趨勢</h2>
           </div>
           <div class="card-prompt">
-            <p class="intro-desc">在課堂實驗中，我們進行了 5 次「接尺實驗（有意識行為）」與「瞳孔對光收縮（反射作用）」，請輸入實驗數據或使用預設測量值，觀察雙曲線趨勢圖：</p>
+            <p class="intro-desc">請觀察影片中光線明暗改變時，瞳孔如何自動放大或縮小。想一想：變亮時，瞳孔往哪個方向變化？這個反應不需要刻意控制。</p>
           </div>
+
+          <div class="pupil-video">
+            <iframe src="https://www.youtube.com/embed/c2Y9FKeRWoY?start=17" title="瞳孔對光反射實驗演示" loading="lazy" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+          </div>
+          <p class="pupil-safety"><strong>⚠️ 安全提醒：</strong>請觀看影片觀察即可，切勿在教室內拿平板閃光燈或強光手電筒近距離直接照射同學眼睛！</p>
+          <p class="pupil-chart-intro"><a href="https://www.youtube.com/watch?v=c2Y9FKeRWoY&amp;t=17s" target="_blank" rel="noopener noreferrer">在 YouTube 開啟影片（從 17 秒開始）</a></p>
 
           <!-- 互動圖表與實驗數據輸入區 -->
           <div class="experiment-chart-container" style="background: #ffffff; border: 1.5px solid var(--card-border); border-radius: var(--radius-lg); padding: 18px; margin-bottom: 20px;">
             <div class="chart-header-row" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
               <div style="font-weight: 700; color: #0f172a; font-size: 1.05rem;">
-                📈 實驗連續 5 次反應時間折線對比圖（次數 1~5）
+                📈 反應時間折線對比圖（第 1～5 次）
               </div>
               <div style="display: flex; gap: 14px; font-size: 0.85rem; font-weight: 700;">
                 <span style="color: #7c3aed; display: flex; align-items: center; gap: 4px;"><span style="display:inline-block; width:12px; height:3px; background:#7c3aed; border-radius:2px;"></span> 接尺反應 (有意識行為)</span>
-                <span style="color: #ea580c; display: flex; align-items: center; gap: 4px;"><span style="display:inline-block; width:12px; height:3px; background:#ea580c; border-radius:2px;"></span> 瞳孔反射 (反射作用)</span>
+                <span style="color: #ea580c; display: flex; align-items: center; gap: 4px;"><span style="display:inline-block; width:12px; height:3px; background:#ea580c; border-radius:2px;"></span> 瞳孔反射（教學示意）</span>
               </div>
             </div>
+
+            <p class="pupil-chart-note">圖中橘線的 0.08 秒是教學示意值。五次設成相同數值，用來和接尺範例比較。影片只用於觀察瞳孔大小，實際反應時間會隨光照等條件而變動。</p>
 
             <!-- SVG 雙折線座標圖 -->
             <div class="chart-canvas-wrap" style="position: relative; width: 100%; height: 240px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden;">
@@ -441,16 +461,18 @@
                 </defs>
                 <!-- 橫向網格輔助線 -->
                 <line x1="55" y1="35" x2="510" y2="35" stroke="#e2e8f0" stroke-dasharray="3,3"/>
-                <line x1="55" y1="75" x2="510" y2="75" stroke="#e2e8f0" stroke-dasharray="3,3"/>
-                <line x1="55" y1="115" x2="510" y2="115" stroke="#e2e8f0" stroke-dasharray="3,3"/>
-                <line x1="55" y1="155" x2="510" y2="155" stroke="#e2e8f0" stroke-dasharray="3,3"/>
+                <line x1="55" y1="67" x2="510" y2="67" stroke="#e2e8f0" stroke-dasharray="3,3"/>
+                <line x1="55" y1="99" x2="510" y2="99" stroke="#e2e8f0" stroke-dasharray="3,3"/>
+                <line x1="55" y1="131" x2="510" y2="131" stroke="#e2e8f0" stroke-dasharray="3,3"/>
+                <line x1="55" y1="163" x2="510" y2="163" stroke="#e2e8f0" stroke-dasharray="3,3"/>
                 <line x1="55" y1="195" x2="510" y2="195" stroke="#cbd5e1" stroke-width="1.5"/>
 
                 <!-- Y 軸文字 (反應時間 秒) -->
-                <text x="48" y="38" font-size="10" fill="#64748b" text-anchor="end">0.40s</text>
-                <text x="48" y="78" font-size="10" fill="#64748b" text-anchor="end">0.30s</text>
-                <text x="48" y="118" font-size="10" fill="#64748b" text-anchor="end">0.20s</text>
-                <text x="48" y="158" font-size="10" fill="#64748b" text-anchor="end">0.10s</text>
+                <text x="48" y="38" font-size="10" fill="#64748b" text-anchor="end">0.50s</text>
+                <text x="48" y="70" font-size="10" fill="#64748b" text-anchor="end">0.40s</text>
+                <text x="48" y="102" font-size="10" fill="#64748b" text-anchor="end">0.30s</text>
+                <text x="48" y="134" font-size="10" fill="#64748b" text-anchor="end">0.20s</text>
+                <text x="48" y="166" font-size="10" fill="#64748b" text-anchor="end">0.10s</text>
                 <text x="48" y="198" font-size="10" fill="#64748b" text-anchor="end">0.00s</text>
                 <text x="18" y="115" font-size="11" font-weight="700" fill="#475569" text-anchor="middle" transform="rotate(-90 18 115)">反應時間 (秒)</text>
 
@@ -475,8 +497,10 @@
             <!-- 5 次實驗數據輸入面板 -->
             <div style="margin-top: 14px; padding: 12px; background: #f1f5f9; border-radius: 8px;">
               <div style="font-size: 0.88rem; font-weight: 700; color: #334155; margin-bottom: 8px;">
-                📝 輸入 5 次實驗紀錄值（可微調數字，上方折線圖將即時重繪）：
+                📝 接尺反應時間（預填範例，可換成自己的五次紀錄，上方紫線會更新）
+                <button type="button" class="text-hint-btn" id="restoreRulerExample">恢復接尺範例</button>
               </div>
+              <p class="pupil-chart-note">瞳孔反射示意值（秒）　0.08、0.08、0.08、0.08、0.08</p>
               <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(90px, 1fr)); gap: 8px;">
                 <div style="text-align: center;">
                   <span style="font-size: 0.78rem; font-weight: 700; color: #7c3aed;">第 1 次 (秒)</span>
@@ -515,7 +539,7 @@
           </div>
 
           <div class="q-block">
-            <label class="q-label"><span class="q-seq">Q2.</span> 觀察上方圖表數據趨勢，比較接尺反應與瞳孔反射之差異：</label>
+            <label class="q-label"><span class="q-seq">Q2.</span> 依照上方圖表的預設範例，比較紫線（接尺）與橘線（瞳孔反射示意）：</label>
             <div class="form-grid-2">
               <div class="form-group">
                 <label>數值區間變化較大（易受專注力干擾）：</label>
@@ -529,21 +553,21 @@
                 <label>所需反應時間之長短比較：</label>
                 <select id="q4_time_compare" class="cyber-select">
                   <option value="" disabled selected>有意識行為 vs 反射作用</option>
-                  <option value="大於">有意識行為 【大於】 反射行為時間</option>
-                  <option value="等於">有意識行為 【等於】 反射行為時間</option>
-                  <option value="小於">有意識行為 【小於】 反射行為時間</option>
+                  <option value="大於">接尺反應時間 【大於】 反射示意值</option>
+                  <option value="等於">接尺反應時間 【等於】 反射示意值</option>
+                  <option value="小於">接尺反應時間 【小於】 反射示意值</option>
                 </select>
               </div>
             </div>
           </div>
 
           <div class="q-block">
-            <label class="q-label"><span class="q-seq">Q3.</span> 【關鍵圖表推理】接尺反應可以「經由多次練習使反應時間越來越短」，但瞳孔反射「無論練習幾次時間都一樣短且固定」，主要原因為何？<span class="multi-tag">多選題</span></label>
+            <label class="q-label"><span class="q-seq">Q3.</span> 【關鍵圖表推理】關於接尺行為與瞳孔反射，下列哪些敘述正確？<span class="multi-tag">多選題</span></label>
             <div class="cyber-checkbox-grid" id="q4_reason_checks">
               <label class="checkbox-pill">
                 <input type="checkbox" name="q4_rs" value="接尺屬意識大腦具學習經驗記憶">
                 <span class="pill-box"></span>
-                <span class="pill-text">接尺屬於意識行為：中樞為大腦，具有學習、經驗累積與注意力強化的能力，故可越練越快</span>
+                <span class="pill-text">接尺屬於意識行為：中樞為大腦，練習可能讓接尺變快，每次結果也可能受注意力影響</span>
               </label>
               <!-- 混淆誘答項隨機穿插 -->
               <label class="checkbox-pill">
@@ -554,12 +578,12 @@
               <label class="checkbox-pill">
                 <input type="checkbox" name="q4_rs" value="瞳孔反射中樞為腦幹不具意志學習">
                 <span class="pill-box"></span>
-                <span class="pill-text">瞳孔縮小為反射作用：中樞為腦幹，屬於先天固定的保護機制，不經大腦意識也不具學習調整性</span>
+                <span class="pill-text">瞳孔縮小為反射作用：中樞為腦幹，光線變亮時，瞳孔會自動縮小</span>
               </label>
               <label class="checkbox-pill">
                 <input type="checkbox" name="q4_rs" value="反射路徑極短穩定爭取生機">
                 <span class="pill-box"></span>
-                <span class="pill-text">反射路徑極短，天生已特化為最高效率傳導，不需也不會因反覆刺激而改變反應時間</span>
+                <span class="pill-text">瞳孔對光反射由光線變化引發，不需要先有意識地作出決定</span>
               </label>
             </div>
           </div>
@@ -623,7 +647,7 @@
           <div class="q-block">
             <label class="q-label"><span class="q-seq">Q3.</span> 【行人防禦素養簡答】行人在穿越斑馬線馬路時，雖然沒有車輛的機械「煞車距離」，但如何應用本單元神經系統知識，保障自身生命安全？</label>
             <div class="textarea-wrapper">
-              <textarea id="q5_pedestrian_essay" class="cyber-textarea" rows="4" placeholder="請從受器專注（避免滑手機分心）、大腦快速判斷與意識行為主動觀察等神經機制方向說明..."></textarea>
+              <textarea id="q5_pedestrian_essay" class="cyber-textarea" rows="4" placeholder="我過馬路時會＿＿＿＿。這樣我的＿＿＿＿（受器）能察覺＿＿＿＿（路況），讓大腦及早判斷並決定＿＿＿＿（下一步行動）。"></textarea>
               <div class="textarea-meta">
                 <button type="button" class="text-hint-btn" id="essayHintBtn">💡 思考導引提示</button>
                 <span class="char-count" id="essayCharCount">已輸入 0 字</span>
@@ -1025,7 +1049,7 @@
                     <select id="comp_ref_time" class="cyber-select table-select">
                       <option value="" disabled selected>時間與穩定度</option>
                       <option value="時間長易受分心干擾">時間長且波動大</option>
-                      <option value="極迅速且固定不變">反應時間極為短暫，通常在 0.1 秒以內，穩定且不受意志干預</option>
+                      <option value="極迅速且固定不變">在本單元的例子中，反射可快速發生，無須刻意控制</option>
                     </select>
                   </td>
                 </tr>
@@ -1099,11 +1123,11 @@
                   </td>
                 </tr>
                 <tr>
-                  <td>😭 感覺燙痛並叫出聲</td>
+                  <td>😭 感覺到燙痛</td>
                   <td>
                     <select id="seq_pain_center" class="cyber-select table-select">
                       <option value="" disabled selected>選擇中樞</option>
-                      <option value="大腦">大腦感覺中樞 (產生痛覺與發聲)</option>
+                      <option value="大腦">大腦感覺區（產生痛覺）</option>
                       <option value="小腦">小腦</option>
                     </select>
                   </td>
@@ -1112,7 +1136,7 @@
                     <select id="seq_pain_order" class="cyber-select table-select">
                       <option value="" disabled selected>先發生或後發生</option>
                       <option value="先發生">【先發生】</option>
-                      <option value="後發生">【後發生】（多了一段脊髓上傳至大腦的路徑與思考）</option>
+                      <option value="後發生">【後發生】（訊息經脊髓上傳至大腦後，才感覺到燙痛）</option>
                     </select>
                   </td>
                 </tr>
@@ -1260,7 +1284,7 @@
         <div class="score-display-box">
           <div class="score-label">客觀題得分（100分滿分）</div>
           <div class="score-number"><span id="scoreVal">--</span><span class="score-total">/ 100</span></div>
-          <div class="score-status" id="scoreStatus">批改統計中...</div>
+          <div class="score-status" id="scoreStatus" role="status">批改統計中...</div>
         </div>
 
         <div class="result-details-box" id="resultDetailsBox">
@@ -1281,6 +1305,7 @@
       <div class="modal-footer" style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
         <button type="button" class="cyber-btn primary-btn" id="btnModalClose" style="flex: 1;">完成並關閉（查看作答）</button>
         <button type="button" class="cyber-btn" id="btnModalFreshStudent" style="flex: 1; background: #fee2e2; color: #dc2626; border: 1.5px solid #fca5a5; font-weight: 800;">🔄 換下一位同學全新作答</button>
+        <small style="flex-basis:100%; color:#475569; text-align:right;">（點擊將清除本次作答模式中上一位同學或小組的本地暫存資料）</small>
       </div>
     </div>
   </div>
@@ -1289,7 +1314,7 @@
   <div class="cyber-toast" id="cyberToast"></div>
 
   <!-- 引入主腳本 (附帶版本號強制作廢舊快取) -->
-<script src="nervous.js?v=5.0"></script>
+<script src="nervous.js?v=5.3"></script>
 
 <!-- 🛡️ 交卷前【身分再次核對】防呆確認 Modal -->
   <div id="identityConfirmModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(15,23,42,0.85); backdrop-filter:blur(8px); z-index:99999; justify-content:center; align-items:center;">
