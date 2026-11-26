@@ -20,10 +20,8 @@
     .pupil-chart-intro { margin: 0 0 1rem; }
     .pupil-chart-note { margin: 0 0 0.5rem; color: #475569; font-size: 0.85rem; }
     .nerve-atlas { background: #faf2e5; }
-    .nerve-atlas-brain, .nerve-atlas-inset { position: relative; }
     .nerve-atlas img { display: block; width: 100%; height: auto; }
-    .nerve-atlas-inset { width: 61%; margin: -5% auto 4%; aspect-ratio: 2 / 1; overflow: hidden; border: 1px solid #cbd5e1; border-radius: 8px; }
-    .nerve-atlas-inset img { height: 100%; object-fit: cover; }
+    .nerve-atlas-leader { position: absolute; top: 84%; left: 58%; width: 13%; border-top: 2px solid #0369a1; pointer-events: none; }
     .nerve-atlas .img-hotspot { padding: 0; border: 0; background: transparent; }
     .nerve-atlas .img-hotspot:focus-visible { outline: 3px solid #0f172a; outline-offset: 2px; }
   </style>
@@ -723,28 +721,24 @@
             </div>
 
             <div class="human-img-stage nerve-atlas">
-              <div class="nerve-atlas-brain">
-                <img src="assets/nerve-brain-atlas.webp" width="512" height="512" alt="腦部側視插圖，標出 A、B、C 三個區域">
-                <button type="button" class="img-hotspot active-target" id="hotspotA" data-center="A" style="top:38%; left:54%;" aria-label="分區 A">
-                  <span class="hotspot-pulse" aria-hidden="true"></span>
-                  <span class="hotspot-badge">A</span>
-                </button>
-                <button type="button" class="img-hotspot" id="hotspotB" data-center="B" style="top:69%; left:73%;" aria-label="分區 B">
-                  <span class="hotspot-pulse" aria-hidden="true"></span>
-                  <span class="hotspot-badge">B</span>
-                </button>
-                <button type="button" class="img-hotspot" id="hotspotC" data-center="C" style="top:73%; left:52%;" aria-label="分區 C">
-                  <span class="hotspot-pulse" aria-hidden="true"></span>
-                  <span class="hotspot-badge">C</span>
-                </button>
-              </div>
-              <div class="nerve-atlas-inset">
-                <img src="assets/nerve-spinal-atlas.webp" width="512" height="512" alt="神經中樞橫切面插圖，標出 D 區域">
-                <button type="button" class="img-hotspot" id="hotspotD" data-center="D" style="top:50%; left:50%;" aria-label="分區 D">
-                  <span class="hotspot-pulse" aria-hidden="true"></span>
-                  <span class="hotspot-badge">D</span>
-                </button>
-              </div>
+              <img src="assets/nerve-brain-and-spinal-cord.png" width="1254" height="1254" alt="腦與脊髓相連的側視示意圖，標出 A、B、C、D 四個區域">
+              <button type="button" class="img-hotspot active-target" id="hotspotA" data-center="A" style="top:32%; left:51%;" aria-label="分區 A">
+                <span class="hotspot-pulse" aria-hidden="true"></span>
+                <span class="hotspot-badge">A</span>
+              </button>
+              <button type="button" class="img-hotspot" id="hotspotB" data-center="B" style="top:51%; left:71%;" aria-label="分區 B">
+                <span class="hotspot-pulse" aria-hidden="true"></span>
+                <span class="hotspot-badge">B</span>
+              </button>
+              <button type="button" class="img-hotspot" id="hotspotC" data-center="C" style="top:56%; left:53%;" aria-label="分區 C">
+                <span class="hotspot-pulse" aria-hidden="true"></span>
+                <span class="hotspot-badge">C</span>
+              </button>
+              <span class="nerve-atlas-leader" aria-hidden="true"></span>
+              <button type="button" class="img-hotspot" id="hotspotD" data-center="D" style="top:84%; left:71%;" aria-label="分區 D">
+                <span class="hotspot-pulse" aria-hidden="true"></span>
+                <span class="hotspot-badge">D</span>
+              </button>
             </div>
             <div class="viewer-tip">👆 點擊圖上光點 A~D，即可在右側切換對應中樞之小組認領任務卡</div>
           </div>
